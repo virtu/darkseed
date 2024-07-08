@@ -30,15 +30,6 @@ def start_command_server():
     server.serve_forever()
 
 
-def init():
-    """
-    Handle initialization.
-
-    First, check requirements, then parse command-line arguments and create
-    settings object. Next, sanity-check the settings and initialize the logger.
-    """
-
-
 def main():
     """Parse command-line arguments, set up logging, and run darkseed daemon."""
 
