@@ -1,86 +1,23 @@
 """Darkseed daemon that listens for DNS requests and commands."""
 
+import bz2
 import copy
+import csv
 import logging as log
 import random
 import socketserver
 import threading
 import time
+from dataclasses import dataclass, field
+from datetime import datetime
+from pathlib import Path
+from typing import ClassVar
 
 from dnslib import AAAA, QTYPE, RR, TXT, A, DNSRecord
 
 from darkseed.config import get_config
-
-# Generate dummy records until real data is read from crawler outputs
-SeedRecords = []
-for i in range(20):
-    SeedRecords.append((QTYPE.A, A(f"192.168.178.{i}")))
-    SeedRecords.append((QTYPE.AAAA, AAAA(f"ff06:f00d::10:{i}")))
-    SeedRecords.append((QTYPE.TXT, TXT(f"Test data {i}")))
-
-
-def dns_handler(data, addr) -> bytearray:
-    request = DNSRecord.parse(data)
-    log.debug("Received DNS request from %s", addr)
-
-    # if TimeUp():
-    #   create new selection
-    # else:
-    #   use the current selection
-
-    reply = request.reply()
-
-    pool = SeedRecords.copy()
-    num_recs = 0
-    size_limit = 512
-    while True:
-        if not pool:
-            log.warning("Ran out of reachable nodes during reply creation.")
-            if num_recs == 0:
-                log.warning("Returning empty reply")
-            return reply.pack()
-
-        rtype, rdata = random.choice(pool)
-        # log.debug("attempting to add rtype=%s, rdata=%s", rtype, rdata)
-        # todos:
-        # - avoid dups
-        # - inbue with domain knowledge (e.g., if CJDNS, I2P, and TOR records exist,
-        #   provide at least one of the two former, two of the latter)
-        rrec = RR("seed.21.ninja", rtype=rtype, ttl=60, rdata=rdata)
-
-        reply_new = copy.deepcopy(reply)
-        reply_new.add_answer(rrec)
-
-        if len(reply_new.pack()) > size_limit:
-            # exit early. room for opt: try another record
-            log.debug(
-                "new_size=%dB exceeds limit=%dB", len(reply_new.pack()), size_limit
-            )
-            break
-
-        num_recs += 1
-        log.debug(
-            "Added record (data=%s, type=%s, number=%d, prev_size=%dB, new_size=%dB)",
-            rrec.rdata,
-            rrec.rtype,
-            num_recs,
-            len(reply.pack()),
-            len(reply_new.pack()),
-        )
-        reply = reply_new
-
-    log.info("Created reply (size=%dB, records=%d)", len(reply.pack()), num_recs)
-    return reply.pack()
-
-
-class DNSRequestHandler(socketserver.BaseRequestHandler):
-    def handle(self):
-        data = self.request[0].strip()
-        socket = self.request[1]
-        response = dns_handler(data, self.client_address)
-        reply_size = len(response)
-        socket.sendto(response, self.client_address)
-        log.debug("Sent DNS reply (size=%d, to=%s)", reply_size, self.client_address)
+from darkseed.dns import DNSRequestHandler, DNSServer
+from darkseed.nodes import NodeProvider
 
 
 class CommandServerHandler(socketserver.BaseRequestHandler):
@@ -96,11 +33,6 @@ class CommandServerHandler(socketserver.BaseRequestHandler):
             response = "Invalid command."
 
         self.request.sendall(response.encode("utf-8"))
-
-
-def start_dns_server():
-    server = socketserver.UDPServer(("localhost", 8053), DNSRequestHandler)
-    server.serve_forever()
 
 
 def start_command_server():
@@ -137,16 +69,18 @@ def main():
     log.Formatter.converter = time.gmtime
     log.info("Using configuration: %s", conf)
 
-    dns_thread = threading.Thread(target=start_dns_server)
     command_thread = threading.Thread(target=start_command_server)
-    # nodes_thread = threading.Thread(
-    #     target=list_files_in_directory, args=(directory_to_watch,)
-    # )
 
-    dns_thread.start()
-    log.info("Started DNS thread.")
     command_thread.start()
-    log.info("Started command thread.")
+    log.info("Started CommandServer thread.")
+
+    node_provider = NodeProvider(conf.crawler_path)
+    node_provider.start()
+    log.info("Started NodeProvider thread.")
+
+    dns_server = DNSServer(address="localhost", port=8053)
+    dns_server.start()
+    log.info("Started DNSServer thread.")
 
 
 if __name__ == "__main__":
