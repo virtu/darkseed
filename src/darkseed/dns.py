@@ -1,27 +1,13 @@
-"""
-DNS functionality for Darkseed
-
-Components:
-- DNSServer
-- DNSRequestHandler
-"""
+"""DNS functionality for Darkseed."""
 
 import copy
 import logging as log
 import random
 import socketserver
 import threading
-import time
 from dataclasses import dataclass, field
 
 from dnslib import AAAA, QTYPE, RR, TXT, A, DNSRecord
-
-# Generate dummy records until real data is read from crawler outputs
-SeedRecords = []
-for i in range(20):
-    SeedRecords.append((QTYPE.A, A(f"192.168.178.{i}")))
-    SeedRecords.append((QTYPE.AAAA, AAAA(f"ff06:f00d::10:{i}")))
-    SeedRecords.append((QTYPE.TXT, TXT(f"Test data {i}")))
 
 
 @dataclass
@@ -76,12 +62,10 @@ class DNSRequestHandler:
         if not self.reachable_nodes:
             log.warning("No reachable nodes to reply with: returning empty reply.")
             return bytearray()
-        pool = self.reachable_nodes.copy()
-        # pool = SeedRecords.copy()
 
+        pool = self.reachable_nodes.copy()
         num_recs = 0
         size_limit = 512
-
         while True:
             if not pool:
                 log.warning("Ran out of reachable nodes during reply creation.")
@@ -121,10 +105,6 @@ class DNSRequestHandler:
             reply = reply_new
 
         log.info("Created reply (size=%dB, records=%d)", len(reply.pack()), num_recs)
-        # log.info("Reply: %s", reply)
-        # log.info("dir(reply): %s", dir(reply))
-        # log.info("reply.questions: %s", reply.questions)
-        # log.info("reply.reply: %s", reply.reply)
         return reply.pack()
 
 
@@ -132,11 +112,16 @@ dns_request_handler = DNSRequestHandler()
 
 
 class DNSRequestBridge(socketserver.BaseRequestHandler):
-    """DNS request handler called by DNSServer when a request is received."""
+    """
+    Class to bridge between UDPServer and DNSRequestHandler.
+
+    This is necessary because the BaseRequestHandler class, which this class
+    inherits from, cannot easily be extended.
+    """
 
     def handle(self):
         """Bridge DNS request to DNSRequestHandler."""
-        dns_request_handler.handle(self.request, self.client_address)  # ignore: type
+        dns_request_handler.handle(self.request, self.client_address)
 
 
 @dataclass(unsafe_hash=True)
@@ -145,7 +130,6 @@ class DNSServer(threading.Thread):
 
     address: str
     port: int
-    # node_provider: NodeProvider
 
     def __post_init__(self):
         super().__init__(name=self.__class__.__name__)
@@ -154,5 +138,4 @@ class DNSServer(threading.Thread):
         """Start DNS server thread."""
         log.info("Starting DNS server on %s:%d", self.address, self.port)
         server = socketserver.UDPServer((self.address, self.port), DNSRequestBridge)
-        # server.node_provider = self.node_provider  # type: ignore
         server.serve_forever()
