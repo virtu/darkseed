@@ -5,12 +5,14 @@ import csv
 import logging as log
 import threading
 import time
+from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import ClassVar
 
-from darkseed.dns import NodeAddress, dns_request_handler
+from darkseed.dns import dns_request_handler
+from darkseed.node import Node
 
 
 @dataclass(unsafe_hash=True)
@@ -18,7 +20,7 @@ class NodeProvider(threading.Thread):
     """Class that provides reachable nodes data."""
 
     path: Path
-    refresh: int = 3600  # refresh frequency in seconds
+    refresh: int = 600  # refresh frequency in seconds. default: ten minutes
     MAINNET_PORT: ClassVar[int] = 8333
 
     def __post_init__(self):
@@ -50,25 +52,35 @@ class NodeProvider(threading.Thread):
     def read_data_file(data_file):
         """Read bz2-compressed crawler data, filter nodes using a non-standard port, output statistics."""
         nodes = []
+        counter = defaultdict(int)
         with bz2.open(data_file, "rt") as file:
             reader = csv.DictReader(file)  # type: ignore
-            for row in reader:
-                nodes.append(NodeAddress(row["host"], int(row["port"]), row["network"]))
-        num_total = len(nodes)
-        nodes = [n for n in nodes if n.port == NodeProvider.MAINNET_PORT]
-        num_good = len(nodes)
-        num_bad = num_total - num_good
+            rows = list(reader)
+        for row in rows:
+            counter["total"] += 1
+            net, port = row["network"], int(row["port"])
+            if (net != "i2p" and port != NodeProvider.MAINNET_PORT) or (
+                net == "i2p" and port != 0
+            ):
+                if row["network"] == "i2p":
+                    print(f"discarding i2p node with port {row['port']}")
+                counter["bad_port"] += 1
+                continue
+            handshake = row["handshake_successful"].lower() == "true"
+            if not handshake:
+                counter["incomplete_handshake"] += 1
+                continue
+            counter["good"] += 1
+            node = Node(row["host"], port, int(row["services"]))
+            assert node.network == row["network"], "Error detecting network type!"
+            nodes.append(node)
         log.info(
-            "Read %d nodes from %s: ipv4=%d, ipv6=%d, onion=%d, i2p=%d, cjdns=%d (good=%d, bad_port=%d)",
-            num_total,
+            "Extracted %d viable nodes from %s (total=%d, bad_port=%d, incomplete_handshake=%d)",
+            counter["good"],
             data_file,
-            len([n for n in nodes if n.network == "ipv4"]),
-            len([n for n in nodes if n.network == "ipv6"]),
-            len([n for n in nodes if n.network == "onion_v3"]),
-            len([n for n in nodes if n.network == "i2p"]),
-            len([n for n in nodes if n.network == "cjdns"]),
-            num_good,
-            num_bad,
+            counter["total"],
+            counter["bad_port"],
+            counter["incomplete_handshake"],
         )
         return nodes
 
@@ -77,6 +89,5 @@ class NodeProvider(threading.Thread):
 
         data_file = self.get_latest_file()
         nodes = self.read_data_file(data_file)
-        log.debug("Setting reachable nodes in dns_request_handler")
         dns_request_handler.set_reachable_nodes(nodes)
-        log.debug("Set reachable nodes in dns_request_handler")
+        log.debug("Updated reachable nodes in dns_request_handler")

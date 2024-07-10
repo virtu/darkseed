@@ -6,44 +6,31 @@ import random
 import socketserver
 import threading
 from dataclasses import dataclass, field
+from typing import List
 
-from dnslib import AAAA, QTYPE, RR, TXT, A, DNSRecord
+from dnslib import RR, DNSRecord
 
-
-@dataclass
-class NodeAddress:
-    """Class representing a Bitcoin node address."""
-
-    address: str
-    port: int
-    network: str
-
-    def get_rtype_rdata(self):
-        """Convert address to DNS resource record (type, data)-pair."""
-        if self.network == "ipv4":
-            return QTYPE.A, A(self.address)
-        if self.network == "ipv6":
-            return QTYPE.AAAA, AAAA(self.address)
-        if self.network == "onion_v3":
-            return QTYPE.TXT, TXT(self.address)
-        if self.network == "onion_v3":
-            return QTYPE.TXT, TXT(self.address)
-        if self.network == "onion_v3":
-            return QTYPE.TXT, TXT(self.address)
-        raise ValueError(f"Unknown network: {self.network}")
+from darkseed.codec import Codec
+from darkseed.node import Node
 
 
 class DNSRequestHandler:
     """DNS request handler."""
 
-    reachable_nodes: list = field(default_factory=list)
+    reachable_nodes: List[Node] = field(default_factory=list)
 
     def set_reachable_nodes(self, nodes):
         """Set reachable nodes."""
-        log.debug(
-            "DNSRequestHandler.set_reachable_nodes() called with %d nodes", len(nodes)
-        )
         self.reachable_nodes = nodes
+        log.info(
+            "Updated reachable node pool: total=%d, ipv4=%d, ipv6=%d, onion_v3=%d, i2p=%d, cjdns=%d",
+            len(nodes),
+            len([n for n in nodes if n.network == "ipv4"]),
+            len([n for n in nodes if n.network == "ipv6"]),
+            len([n for n in nodes if n.network == "onion_v3"]),
+            len([n for n in nodes if n.network == "i2p"]),
+            len([n for n in nodes if n.network == "cjdns"]),
+        )
 
     def handle(self, request, address):
         """Handle DNS request: marshall data and send reply."""
@@ -63,19 +50,20 @@ class DNSRequestHandler:
             log.warning("No reachable nodes to reply with: returning empty reply.")
             return bytearray()
 
-        pool = self.reachable_nodes.copy()
+        nodes_pool = self.reachable_nodes.copy()
         num_recs = 0
         size_limit = 512
         while True:
-            if not pool:
+            if not nodes_pool:
                 log.warning("Ran out of reachable nodes during reply creation.")
                 if num_recs == 0:
                     log.warning("Returning empty reply")
                 return reply.pack()
 
             # rtype, rdata = random.choice(pool)
-            address = random.choice(pool)
-            rtype, rdata = address.get_rtype_rdata()
+            node = random.choice(nodes_pool)
+            rtype = Codec.get_rtype(node.address)
+            rdata = Codec.get_rdata(node.address)
             log.debug("attempting to add rtype=%s, rdata=%s", rtype, rdata)
             # todos:
             # - avoid dups
