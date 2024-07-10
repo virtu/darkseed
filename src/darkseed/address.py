@@ -45,7 +45,7 @@ class Address:
             raise ValueError(f"Unsupported address type: {address}") from e
         if ip.version == 4:
             return "ipv4"
-        if ip.version == 6 and address.lower().startswith("fc00"):
+        if ip.version == 6 and address.lower().startswith("fc"):
             return "cjdns"
         return "ipv6"
 
@@ -72,11 +72,23 @@ class I2PAddress(Address):
             raise ValueError(f"Invalid I2P address length: {addr_encoded}")
         return base64.b32decode(addr_encoded.upper() + "====")
 
-    def to_base64(self) -> str:
+    @cached_property
+    def bytes_raw(self) -> bytes:
+        """Get byte data."""
+        return self.hash
+
+    @cached_property
+    def bytes_hex(self) -> str:
+        """Get hex-encoded byte data."""
+        return self.hash.hex()
+
+    @cached_property
+    def base64(self) -> str:
         """Convert 256-bit hash to base64."""
         return base64.b64encode(self.hash).decode()
 
-    def to_base85(self) -> str:
+    @cached_property
+    def base85(self) -> str:
         """Convert 256-bit hash to base85."""
         return base64.b85encode(self.hash).decode()
 
@@ -125,10 +137,22 @@ class OnionV3Address(Address):
             raise ValueError(f"Invalid Onion v3 address version: {version}")
         return pubkey
 
-    def to_base64(self) -> str:
+    @cached_property
+    def bytes_raw(self) -> bytes:
+        """Get byte data."""
+        return self.pubkey
+
+    @cached_property
+    def bytes_hex(self) -> str:
+        """Get hex-encoded byte data."""
+        return self.pubkey.hex()
+
+    @cached_property
+    def base64(self) -> str:
         """Convert 256-bit pubkey to base64."""
         return base64.b64encode(self.pubkey).decode()
 
-    def to_base85(self) -> str:
+    @cached_property
+    def base85(self) -> str:
         """Convert 256-bit pubkey to base85."""
         return base64.b85encode(self.pubkey).decode()

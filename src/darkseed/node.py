@@ -1,6 +1,5 @@
 """Module for the Node class."""
 
-from dataclasses import dataclass
 from enum import IntFlag
 
 from darkseed.address import Address
@@ -19,13 +18,18 @@ class Services(IntFlag):
     SEEDS_SERVICES = NODE_NETWORK | NODE_WITNESS
 
 
-@dataclass
 class Node:
     """Class representing a Bitcoin node."""
 
-    address: Address
-    port: int
-    services: int
+    def __init__(self, address: str, port: int, services: int):
+        self.address = Address(address)
+        self.port = port
+        self.services = services
+
+    @property
+    def network(self):
+        """Get node's network type from address."""
+        return self.address.network
 
     def has_services(self, services: int) -> bool:
         """Check if the node has the required services enabled."""
