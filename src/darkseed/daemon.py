@@ -7,7 +7,7 @@ import time
 
 from darkseed.config import get_config
 from darkseed.dns import DNSServer
-from darkseed.nodes import NodeProvider
+from darkseed.node_loader import NodeLoader
 
 
 class CommandServerHandler(socketserver.BaseRequestHandler):
@@ -46,9 +46,9 @@ def main():
     command_thread.start()
     log.info("Started CommandServer thread.")
 
-    node_provider = NodeProvider(conf.crawler_path)
+    node_provider = NodeLoader(conf.crawler_path)
     node_provider.start()
-    log.info("Started NodeProvider thread.")
+    log.info("Started NodeLoader thread.")
 
     dns_server = DNSServer(address="localhost", port=8053)
     dns_server.start()

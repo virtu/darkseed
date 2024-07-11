@@ -11,12 +11,12 @@ from datetime import datetime
 from pathlib import Path
 from typing import ClassVar
 
-from darkseed.dns import dns_request_handler
+from darkseed.dns import dns_responder
 from darkseed.node import Node
 
 
 @dataclass(unsafe_hash=True)
-class NodeProvider(threading.Thread):
+class NodeLoader(threading.Thread):
     """Class that provides reachable nodes data."""
 
     path: Path
@@ -59,7 +59,7 @@ class NodeProvider(threading.Thread):
         for row in rows:
             counter["total"] += 1
             net, port = row["network"], int(row["port"])
-            if (net != "i2p" and port != NodeProvider.MAINNET_PORT) or (
+            if (net != "i2p" and port != NodeLoader.MAINNET_PORT) or (
                 net == "i2p" and port != 0
             ):
                 if row["network"] == "i2p":
@@ -72,7 +72,7 @@ class NodeProvider(threading.Thread):
                 continue
             counter["good"] += 1
             node = Node(row["host"], port, int(row["services"]))
-            assert node.network == row["network"], "Error detecting network type!"
+            assert str(node.net_type) == row["network"], "Error detecting network type!"
             nodes.append(node)
         log.info(
             "Extracted %d viable nodes from %s (total=%d, bad_port=%d, incomplete_handshake=%d)",
@@ -89,5 +89,5 @@ class NodeProvider(threading.Thread):
 
         data_file = self.get_latest_file()
         nodes = self.read_data_file(data_file)
-        dns_request_handler.set_reachable_nodes(nodes)
-        log.debug("Updated reachable nodes in dns_request_handler")
+        dns_responder.set_reachable_nodes(nodes)
+        log.debug("Updated reachable nodes in dns_responder")
