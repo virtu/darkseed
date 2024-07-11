@@ -2,8 +2,8 @@
 
 import logging as log
 
+import dns.rdata
 import dns.rrset
-from dns.rdata import Rdata
 from dns.rdataclass import IN
 from dns.rdatatype import AAAA as AAAA_TYPE
 from dns.rdatatype import TXT as TXT_TYPE
@@ -29,7 +29,7 @@ class RecordBuilder:
         encoding: str = "address",
         domain: str = "seed.21.ninja.",
         ttl: int = 60,
-    ) -> dns.rrset:
+    ) -> dns.rrset.RRset:
         """Build a DNS record for a node using the specified encoding."""
 
         rdata = RecordBuilder.get_rdata(address, encoding)
@@ -45,7 +45,7 @@ class RecordBuilder:
         return record
 
     @staticmethod
-    def get_rdata(address: Address, encoding: str = "address") -> Rdata:
+    def get_rdata(address: Address, encoding: str = "address") -> dns.rdata.Rdata:
         """
         Get DNS resource record data.
 

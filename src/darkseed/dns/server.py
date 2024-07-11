@@ -1,6 +1,5 @@
 """DNS functionality for Darkseed."""
 
-import copy
 import logging as log
 import random
 import socketserver
@@ -45,7 +44,7 @@ class DNSResponder:
         socket.sendto(reply, address)
         log.debug("Sent DNS reply (size=%d, to=%s)", len(reply), address)
 
-    def create_response(self, request) -> bytearray:
+    def create_response(self, request) -> bytes:
         """Create DNS response."""
 
         reply = dns.message.make_response(request)
