@@ -6,6 +6,7 @@ import dns.rdata
 import dns.rrset
 from dns.rdataclass import IN
 from dns.rdatatype import AAAA as AAAA_TYPE
+from dns.rdatatype import NULL as NULL_TYPE
 from dns.rdatatype import TXT as TXT_TYPE
 from dns.rdatatype import A as A_TYPE
 from dns.rdtypes.ANY.TXT import TXT
@@ -39,7 +40,7 @@ class RecordBuilder:
         log.debug(
             "RR for address=%s: rdata=%s, rr=%s",
             address,
-            rdata,
+            rdata.to_wire().hex(),
             record,
         )
         return record
@@ -62,8 +63,11 @@ class RecordBuilder:
             return A(IN, A_TYPE, address.address)
         if address.ipv6 or address.cjdns:
             return AAAA(IN, AAAA_TYPE, address.address)
-        if encoding == "address" and address.onion or address.i2p:
+        if encoding == "address" and (address.onion or address.i2p):
             return TXT(IN, TXT_TYPE, [address.address])
 
         data = AddressCodec.encode_address(address, encoding)
-        return TXT(IN, TXT_TYPE, [data])
+        assert isinstance(data, (str, bytes)), "Invalid data type for encoding!"
+        if isinstance(data, str):
+            return TXT(IN, TXT_TYPE, [data])
+        return dns.rdata.from_wire(IN, NULL_TYPE, data, 0, len(data))

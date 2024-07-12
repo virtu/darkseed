@@ -35,58 +35,64 @@ class DNSResponder:
         )
 
     def handle(self, request, address):
-        """Handle DNS request: marshall data and send reply."""
+        """Handle DNS request: marshall data and send response."""
         data, socket = request[0].strip(), request[1]
         request = dns.message.from_wire(data)
         domain = [q.name.to_text(omit_final_dot=True) for q in request.question]
         log.debug("Received DNS request from %s for %s", address, domain)
-        reply = self.create_response(request)
-        socket.sendto(reply, address)
-        log.debug("Sent DNS reply (size=%d, to=%s)", len(reply), address)
+        response = self.create_response(request)
+        socket.sendto(response, address)
+        log.debug("Sent DNS response (size=%d, to=%s)", len(response), address)
 
     def create_response(self, request) -> bytes:
         """Create DNS response."""
 
-        reply = dns.message.make_response(request)
+        response = dns.message.make_response(request)
+        response.use_edns(False)
 
         if not self.reachable_nodes:
-            log.warning("No reachable nodes to reply with: returning empty reply.")
-            return bytearray()
+            log.warning("No reachable nodes to response with: empty response.")
+            return bytes()
 
         # TODO
         # - avoid dups
         # - inbue with domain knowledge (e.g., if CJDNS, I2P, and TOR records exist,
         #   provide at least one of the two former, two of the latter)
-        # - log if we run out of nodes or reply no nodes
+        # - log if we run out of nodes or respond no nodes
         # - size_limit: create CONST and store somewhere
         size_limit = 512
         num_recs = 0
 
         nodes_pool = self.reachable_nodes.copy()
-        while nodes_pool and len(reply.to_wire()) < size_limit:
+        while nodes_pool and len(response.to_wire()) < size_limit:
             node = random.choice(nodes_pool)
-            record = RecordBuilder.build_record(node.address)
-            reply.answer.append(record)
-            if len(reply.to_wire()) > size_limit:
+            record = RecordBuilder.build_record(node.address, encoding="raw")
+            response.answer.append(record)
+            if len(response.to_wire()) > size_limit:
                 log.debug(
                     "new_size=%dB for %d records exceeds limit=%dB",
-                    len(reply.to_wire()),
+                    len(response.to_wire()),
                     num_recs + 1,
                     size_limit,
                 )
-                reply.answer.pop()
+                response.answer.pop()
                 break
             num_recs += 1
             log.debug(
                 "Added record for address=%s (num_recs=%d, size=%dB): %s",
                 node.address,
                 num_recs,
-                len(reply.to_wire()),
+                len(response.to_wire()),
                 record,
             )
 
-        log.info("Created reply (size=%dB, records=%d)", len(reply.to_wire()), num_recs)
-        return reply.to_wire()
+        log.info(
+            "Created response (size=%dB, records=%d, hex=%s)",
+            len(response.to_wire()),
+            num_recs,
+            response.to_wire().hex(),
+        )
+        return response.to_wire()
 
 
 dns_responder = DNSResponder()
