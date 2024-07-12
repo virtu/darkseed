@@ -4,8 +4,9 @@ import logging as log
 import random
 import socketserver
 import threading
+from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import List
+from typing import ClassVar, List
 
 import dns.message
 import dns.rdatatype
@@ -13,6 +14,7 @@ import dns.rrset
 
 from darkseed.node import Node
 
+from .custom_encoder import MultiAddressCodec
 from .record_builder import RecordBuilder
 
 
@@ -20,6 +22,7 @@ class DNSResponder:
     """DNS responder."""
 
     reachable_nodes: List[Node] = field(default_factory=list)
+    REPLY_SIZE_LIMIT: ClassVar[int] = 512
 
     def set_reachable_nodes(self, nodes):
         """Set reachable nodes."""
@@ -46,6 +49,8 @@ class DNSResponder:
 
     def create_response(self, request) -> bytes:
         """Create DNS response."""
+        # TODO: output error if we run out of nodes or there's an issue with
+        # the reply's size
 
         response = dns.message.make_response(request)
         response.use_edns(False)
@@ -53,38 +58,62 @@ class DNSResponder:
         if not self.reachable_nodes:
             log.warning("No reachable nodes to response with: empty response.")
             return bytes()
-
-        # TODO
-        # - avoid dups
-        # - inbue with domain knowledge (e.g., if CJDNS, I2P, and TOR records exist,
-        #   provide at least one of the two former, two of the latter)
-        # - log if we run out of nodes or respond no nodes
-        # - size_limit: create CONST and store somewhere
-        size_limit = 512
         num_recs = 0
 
-        nodes_pool = self.reachable_nodes.copy()
-        while nodes_pool and len(response.to_wire()) < size_limit:
-            node = random.choice(nodes_pool)
-            record = RecordBuilder.build_record(node.address, encoding="raw")
+        # TODO: abstract and move into function!
+        # encode two onion and i2p addrs using MultiAddressCodec
+        onion_nodes = [node for node in self.reachable_nodes if node.address.onion]
+        onion_nodes = random.sample(onion_nodes, 2)
+        i2p_nodes = [node for node in self.reachable_nodes if node.address.i2p]
+        i2p_nodes = random.sample(i2p_nodes, 2)
+        addrs = [n.address for n in onion_nodes + i2p_nodes]
+        record = MultiAddressCodec.build_record(addrs)
+        num_recs += 4
+        response.answer.append(record)
+        log.debug(
+            "Added four records to response (num_recs=%d, size=%dB)",
+            num_recs,
+            len(response.to_wire()),
+        )
+
+        # TODO: abstract and move into function
+        cjdns_addrs = [n.address for n in self.reachable_nodes if n.address.cjdns]
+        cjdns_addrs = random.sample(cjdns_addrs, 2)
+        for cjdns_addr in cjdns_addrs:
+            record = RecordBuilder.build_record(cjdns_addr)
             response.answer.append(record)
-            if len(response.to_wire()) > size_limit:
-                log.debug(
-                    "new_size=%dB for %d records exceeds limit=%dB",
-                    len(response.to_wire()),
-                    num_recs + 1,
-                    size_limit,
-                )
-                response.answer.pop()
-                break
-            num_recs += 1
-            log.debug(
-                "Added record for address=%s (num_recs=%d, size=%dB): %s",
-                node.address,
-                num_recs,
-                len(response.to_wire()),
-                record,
-            )
+        num_recs += 2
+        log.debug(
+            "Added 2 records to response (num_recs=%d, size=%dB)",
+            num_recs,
+            len(response.to_wire()),
+        )
+
+        # TODO: abstract and move into function
+        ipv4_addrs = [n.address for n in self.reachable_nodes if n.address.ipv4]
+        ipv4_addrs = random.sample(ipv4_addrs, 10)
+        for ipv4_addr in ipv4_addrs:
+            record = RecordBuilder.build_record(ipv4_addr)
+            response.answer.append(record)
+        num_recs += 10
+        log.debug(
+            "Added 10 records to response (num_recs=%d, size=%dB)",
+            num_recs,
+            len(response.to_wire()),
+        )
+
+        # TODO: abstract and move into function
+        ipv6_addrs = [n.address for n in self.reachable_nodes if n.address.ipv6]
+        ipv6_addrs = random.sample(ipv6_addrs, 4)
+        for ipv6_addr in ipv6_addrs:
+            record = RecordBuilder.build_record(ipv6_addr)
+            response.answer.append(record)
+        num_recs += 4
+        log.debug(
+            "Added 4 records to response (num_recs=%d, size=%dB)",
+            num_recs,
+            len(response.to_wire()),
+        )
 
         log.info(
             "Created response (size=%dB, records=%d, hex=%s)",

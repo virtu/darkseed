@@ -38,6 +38,16 @@ class OnionAddressCodec:
     """Class for encoding/decoding Onion v3 addresses."""
 
     @staticmethod
+    def pubkey_to_address(pubkey: bytes) -> str:
+        """Convert 256-bit public key to Onion v3 address."""
+        version = b"\x03"
+        checksum = OnionAddressCodec.compute_checksum(pubkey)
+        return (
+            base64.b32encode(pubkey + checksum + version).decode().rstrip("=").lower()
+            + DarknetSpecs.ONION_V3_ADDR_SUFFIX
+        )
+
+    @staticmethod
     def encode_address(address: Address, encoding: str) -> str | bytes:
         """Encode Onion v3 address using specified encoding. Strip padding ("=") from base64/85"""
         pubkey = OnionAddressCodec.get_pubkey(address.address)
@@ -66,30 +76,38 @@ class OnionAddressCodec:
         decoded = base64.b32decode(addr_encoded.upper())
         pubkey = decoded[:32]
         version = decoded[34]
-        checksum = decoded[32:34]
-        OnionAddressCodec.validate_checksum(pubkey, checksum)
-        if version != 3:
-            raise ValueError(f"Invalid Onion v3 address version: {version}")
-        return pubkey
-
-    @staticmethod
-    def validate_checksum(pubkey: bytes, checksum_expected: bytes):
-        """Compute and validate checksum for public key.
-
-        To compute checksum, concatenate ".onion checksum" with pubkey and
-        version (3); then hash with sha256 and use the first two bytes.
-        """
-        checksum_input = b".onion checksum" + pubkey + b"\x03"
-        checksum_computed = hashlib.sha3_256(checksum_input).digest()[:2]
+        checksum_expected = decoded[32:34]
+        checksum_computed = OnionAddressCodec.compute_checksum(pubkey)
         if checksum_computed != checksum_expected:
             raise ValueError(
                 f"Invalid Onion v3 address checksum: "
                 f"expected={checksum_expected}, computed={checksum_computed}"
             )
+        if version != 3:
+            raise ValueError(f"Invalid Onion v3 address version: {version}")
+        return pubkey
+
+    @staticmethod
+    def compute_checksum(pubkey: bytes) -> bytes:
+        """Compute checksum for public key.
+
+        To compute checksum, concatenate ".onion checksum" with pubkey and
+        version (3); then hash with sha256 and use the first two bytes.
+        """
+        checksum_input = b".onion checksum" + pubkey + b"\x03"
+        return hashlib.sha3_256(checksum_input).digest()[:2]
 
 
 class I2PAddressCodec:
     """Class for encoding/decoding I2P addresses."""
+
+    @staticmethod
+    def hash_to_address(pubkey: bytes) -> str:
+        """Convert 256-bit hash to I2P address."""
+        return (
+            base64.b32encode(pubkey).decode().rstrip("=").lower()
+            + DarknetSpecs.I2P_ADDR_SUFFIX
+        )
 
     @staticmethod
     def encode_address(address: Address, encoding: str) -> str | bytes:
