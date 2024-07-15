@@ -69,7 +69,7 @@ class DNSResponder:
                 response.answer.append(record)
             num_recs, num_addrs = len(addresses), len(addresses)
         elif encoding == "custom":
-            record = MultiAddressCodec.build_record([a for a in addresses])
+            record = MultiAddressCodec.build_record(addresses)
             response.answer.append(record)
             num_recs, num_addrs = 1, len(addresses)
         else:

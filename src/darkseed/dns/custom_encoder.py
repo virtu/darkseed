@@ -2,7 +2,7 @@
 
 import logging as log
 from dataclasses import dataclass
-from typing import ClassVar
+from typing import ClassVar, List
 
 import dns.rdata
 import dns.rrset
@@ -14,8 +14,30 @@ from darkseed.node import (Address, AddressCodec, I2PAddressCodec,
 
 
 @dataclass
-class MultiAddressCodecRecord:
-    """Class representing a record used in the MultiAddressCodec."""
+class CustomNullEncoding:
+    """Class representing data used in custom NULL records."""
+
+    num_records: int
+    records: List["CustomNullEncodingRecord"]
+
+    @classmethod
+    def from_bytes(cls, data: bytes) -> "CustomNullEncoding":
+        """Create a CustomNullEncoding instance from bytes."""
+        num_records = int.from_bytes([data[0]], "big")
+        records = []
+        pos = 1
+        for _ in range(num_records):
+            record = CustomNullEncodingRecord.from_bytes(
+                data[pos : pos + CustomNullEncodingRecord.RECORD_LEN]
+            )
+            records.append(record)
+            pos += CustomNullEncodingRecord.RECORD_LEN
+        return cls(num_records, records)
+
+
+@dataclass
+class CustomNullEncodingRecord:
+    """Class representing a record used in CustomNullEncoding."""
 
     type: int
     data: bytes
@@ -34,9 +56,9 @@ class MultiAddressCodecRecord:
         return self.type.to_bytes(1, "big") + self.data
 
     @classmethod
-    def from_bytes(cls, data: bytes) -> "MultiAddressCodecRecord":
-        """Create a MultiAddressCodecRecord instance from bytes."""
-        if len(data) != MultiAddressCodecRecord.RECORD_LEN:
+    def from_bytes(cls, data: bytes) -> "CustomNullEncodingRecord":
+        """Create a CustomNullEncodingRecord instance from bytes."""
+        if len(data) != CustomNullEncodingRecord.RECORD_LEN:
             raise ValueError(f"Invalid record length: {len(data)}")
         record_type = int.from_bytes([data[0]])
         if record_type not in (cls.ONION_V3_ADDR, cls.I2P_ADDR):
@@ -55,9 +77,9 @@ class MultiAddressCodecRecord:
         raise ValueError(f"Invalid record type: {record_type}")
 
     @classmethod
-    def from_address(cls, address: Address) -> "MultiAddressCodecRecord":
-        """Create a MultiAddressCodecRecord instance from an Address."""
-        record_type = MultiAddressCodecRecord.address_to_type(address)
+    def from_address(cls, address: Address) -> "CustomNullEncodingRecord":
+        """Create a CustomNullEncodingRecord instance from an Address."""
+        record_type = CustomNullEncodingRecord.address_to_type(address)
         record_data = AddressCodec.encode_address(address, encoding="raw")
         assert isinstance(record_data, bytes), "Expected data to be bytes"
         return cls(record_type, record_data, address.address)
@@ -66,12 +88,13 @@ class MultiAddressCodecRecord:
     def address_to_type(address: Address) -> int:
         """Detremine record type for address."""
         if address.onion:
-            return MultiAddressCodecRecord.ONION_V3_ADDR
+            return CustomNullEncodingRecord.ONION_V3_ADDR
         if address.i2p:
-            return MultiAddressCodecRecord.I2P_ADDR
+            return CustomNullEncodingRecord.I2P_ADDR
         raise ValueError(f"Unsupported address type: {address}")
 
 
+@dataclass(frozen=True)
 class MultiAddressCodec:
     """
     Class for encoding and decoding multiple addresses in a single DNS NULL
@@ -95,7 +118,7 @@ class MultiAddressCodec:
         rdata = num_records.to_bytes(1, "big")
         log.debug("num_records=%d, rdata=%s", num_records, rdata.hex())
         for address in addresses:
-            record = MultiAddressCodecRecord.from_address(address)
+            record = CustomNullEncodingRecord.from_address(address)
             rdata += record.to_wire()
             log.debug("Added new record %s, rdata=%s", record, rdata.hex())
         rdata = dns.rdata.from_wire(IN, NULL_TYPE, rdata, 0, len(rdata))
