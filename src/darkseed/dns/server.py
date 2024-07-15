@@ -4,7 +4,6 @@ import logging as log
 import random
 import socketserver
 import threading
-from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import ClassVar, List
 
@@ -12,7 +11,7 @@ import dns.message
 import dns.rdatatype
 import dns.rrset
 
-from darkseed.node import Node
+from darkseed.node import Address, Node
 
 from .custom_encoder import MultiAddressCodec
 from .record_builder import RecordBuilder
@@ -47,6 +46,42 @@ class DNSResponder:
         socket.sendto(response, address)
         log.debug("Sent DNS response (size=%d, to=%s)", len(response), address)
 
+    def get_random_addresses(self, address_type: str, count: int):
+        """Select a specific number of address based on address type."""
+        nodes = [n for n in self.reachable_nodes if getattr(n.address, address_type)]
+        addresses = [n.address for n in nodes]
+        if len(nodes) < count:
+            log.warning(
+                "Not enough nodes to select from: count=%d, total=%d. Returning %d address(es).",
+                count,
+                len(nodes),
+                len(nodes),
+            )
+        return random.sample(addresses, min(count, len(nodes)))
+
+    def add_records_to_response(
+        self, response, addresses: List[Address], encoding: str = "regular"
+    ):
+        """Add records for the nodes to the DNS response."""
+        if encoding == "regular":
+            for address in addresses:
+                record = RecordBuilder.build_record(address)
+                response.answer.append(record)
+            num_recs, num_addrs = len(addresses), len(addresses)
+        elif encoding == "custom":
+            record = MultiAddressCodec.build_record([a for a in addresses])
+            response.answer.append(record)
+            num_recs, num_addrs = 1, len(addresses)
+        else:
+            raise ValueError(f"Invalid encoding: {encoding}")
+        size = len(response.to_wire())
+        log.debug(
+            "Added %d record(s) for %d address(es) to response (size=%dB)",
+            num_recs,
+            num_addrs,
+            size,
+        )
+
     def create_response(self, request) -> bytes:
         """Create DNS response."""
         # TODO: output error if we run out of nodes or there's an issue with
@@ -60,67 +95,29 @@ class DNSResponder:
             return bytes()
         num_recs = 0
 
-        # TODO: abstract and move into function!
-        # encode two onion and i2p addrs using MultiAddressCodec
-        onion_nodes = [node for node in self.reachable_nodes if node.address.onion]
-        onion_nodes = random.sample(onion_nodes, 2)
-        i2p_nodes = [node for node in self.reachable_nodes if node.address.i2p]
-        i2p_nodes = random.sample(i2p_nodes, 2)
-        addrs = [n.address for n in onion_nodes + i2p_nodes]
-        record = MultiAddressCodec.build_record(addrs)
-        num_recs += 4
-        response.answer.append(record)
-        log.debug(
-            "Added four records to response (num_recs=%d, size=%dB)",
-            num_recs,
-            len(response.to_wire()),
-        )
+        num_darknet, num_ipv4, num_ipv6 = 2, 10, 4
 
-        # TODO: abstract and move into function
-        cjdns_addrs = [n.address for n in self.reachable_nodes if n.address.cjdns]
-        cjdns_addrs = random.sample(cjdns_addrs, 2)
-        for cjdns_addr in cjdns_addrs:
-            record = RecordBuilder.build_record(cjdns_addr)
-            response.answer.append(record)
-        num_recs += 2
-        log.debug(
-            "Added 2 records to response (num_recs=%d, size=%dB)",
-            num_recs,
-            len(response.to_wire()),
-        )
+        # add onion and cjdns nodes using custom encoding
+        onion_nodes = self.get_random_addresses("onion", num_darknet)
+        i2p_nodes = self.get_random_addresses("i2p", num_darknet)
+        multi_addrs = onion_nodes + i2p_nodes
+        self.add_records_to_response(response, multi_addrs, "custom")
 
-        # TODO: abstract and move into function
-        ipv4_addrs = [n.address for n in self.reachable_nodes if n.address.ipv4]
-        ipv4_addrs = random.sample(ipv4_addrs, 10)
-        for ipv4_addr in ipv4_addrs:
-            record = RecordBuilder.build_record(ipv4_addr)
-            response.answer.append(record)
-        num_recs += 10
-        log.debug(
-            "Added 10 records to response (num_recs=%d, size=%dB)",
-            num_recs,
-            len(response.to_wire()),
+        # add nodes with A and AAAA records
+        self.add_records_to_response(
+            response, self.get_random_addresses("cjdns", num_darknet)
         )
-
-        # TODO: abstract and move into function
-        ipv6_addrs = [n.address for n in self.reachable_nodes if n.address.ipv6]
-        ipv6_addrs = random.sample(ipv6_addrs, 4)
-        for ipv6_addr in ipv6_addrs:
-            record = RecordBuilder.build_record(ipv6_addr)
-            response.answer.append(record)
-        num_recs += 4
-        log.debug(
-            "Added 4 records to response (num_recs=%d, size=%dB)",
-            num_recs,
-            len(response.to_wire()),
+        self.add_records_to_response(
+            response, self.get_random_addresses("ipv4", num_ipv4)
+        )
+        self.add_records_to_response(
+            response, self.get_random_addresses("ipv6", num_ipv6)
         )
 
         log.info(
-            "Created response (size=%dB, records=%d, hex=%s)",
-            len(response.to_wire()),
-            num_recs,
-            response.to_wire().hex(),
+            "Created response (size=%dB, records=%d)", len(response.to_wire()), num_recs
         )
+        log.debug("Response=%s", response.to_wire().hex())
         return response.to_wire()
 
 
