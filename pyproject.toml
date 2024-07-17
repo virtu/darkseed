@@ -17,3 +17,4 @@ build-backend = "poetry.core.masonry.api"
 [tool.poetry.scripts]
 darkseed = "darkseed.daemon:main"
 ds-cli = "darkseed.cli:main"
+darkdig = "darkseed.cli.darkdig:main"
