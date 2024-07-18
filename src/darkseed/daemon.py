@@ -50,7 +50,7 @@ def main():
     node_provider.start()
     log.info("Started NodeLoader thread.")
 
-    dns_server = DNSServer(address="localhost", port=8053)
+    dns_server = DNSServer(address=conf.dns_address, port=conf.dns_port)
     dns_server.start()
     log.info("Started DNSServer thread.")
 

@@ -17,6 +17,8 @@ class Config:
     version: str
     timestamp: datetime.datetime
     log_level: str
+    dns_port: int
+    dns_address: str
     crawler_path: Path
     ttl: int
 
@@ -28,6 +30,8 @@ class Config:
             version=__version__,
             timestamp=args.timestamp,
             log_level=args.log_level.upper(),
+            dns_port=args.dns_port,
+            dns_address=args.dns_address,
             crawler_path=args.crawler_path,
             ttl=args.ttl,
         )
@@ -61,6 +65,20 @@ def parse_args():
         type=int,
         default=60,
         help="TTL for DNS records (in seconds)",
+    )
+
+    parser.add_argument(
+        "--dns-address",
+        type=str,
+        default="127.0.0.1",
+        help="IP address used by the DNS server",
+    )
+
+    parser.add_argument(
+        "--dns-port",
+        type=int,
+        default=53,
+        help="UDP port used by the DNS server",
     )
 
     parser.add_argument(
