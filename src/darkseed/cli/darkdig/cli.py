@@ -3,6 +3,7 @@
 
 import base64
 import importlib.metadata
+import time
 
 import dns.flags
 import dns.opcode
@@ -21,17 +22,17 @@ from .config import get_config
 __version__ = importlib.metadata.version("darkseed")
 
 
-def lookup(domain: str, nameserver: str, port: int):
+def lookup(
+    domain: str, nameserver: str, port: int, ctype: str = "A"
+) -> dns.resolver.Answer:
     """Look up DNS records for a domain."""
-    record_types = ["A", "AAAA", "NULL"]
 
     resolver = dns.resolver.Resolver()
     resolver.nameservers = [nameserver]
     resolver.port = port
 
-    for record_type in record_types:
-        answer = resolver.resolve(domain, record_type)
-        return answer
+    answer = resolver.resolve(domain, ctype)
+    return answer
 
 
 class PrettyPrinter:
@@ -98,7 +99,7 @@ class PrettyPrinter:
     def print_regular_answer_record(domain, rrset, rdata):
         """Print one regular DNS query response answer record."""
         print(
-            f"; domain={domain},"
+            f"domain={domain},"
             f" ttl={rrset.ttl},"
             f" rdclass={dns.rdataclass.to_text(rrset.rdclass)},"
             f" rdtype={dns.rdatatype.to_text(rrset.rdtype)},"
@@ -110,7 +111,7 @@ class PrettyPrinter:
         """Print one custom NULL-encoded DNS query response answer record."""
 
         print(
-            f"; domain={domain},"
+            f"domain={domain},"
             f" ttl={rrset.ttl},"
             f" rdclass={dns.rdataclass.to_text(rrset.rdclass)},"
             f" rdtype={dns.rdatatype.to_text(rrset.rdtype)}"
@@ -118,13 +119,13 @@ class PrettyPrinter:
 
         data_base64 = base64.b64encode(rdata.to_wire()).decode("ascii").rstrip("=")
         encoding = CustomNullEncoding.from_bytes(rdata.to_wire())
-        print("; ->>custom NULL encoding<<-", end=" ")
+        print(";; ->>custom NULL encoding<<-", end=" ")
         print(f"size: {len(rdata.to_wire())}", end=", ")
         print(f"records: {encoding.num_records}", end=", ")
         print(f"data (base64): {data_base64}")
 
         for pos, record in enumerate(encoding.records):
-            print("; ->>custom NULL encoding<<-", end=" ")
+            print(";; ->>custom NULL-encoded address <<-", end=" ")
             print(f"record: {pos}", end=", ")
             print(f"address: {record._address}")
 
@@ -134,7 +135,7 @@ class PrettyPrinter:
 
         PrettyPrinter.print_question_section(response)
         PrettyPrinter.print_answer_section(response)
-        PrettyPrinter.print_additional_section(response)
+        PrettyPrinter.print_authority_section(response)
         PrettyPrinter.print_additional_section(response)
 
     @staticmethod
@@ -156,8 +157,19 @@ def main():
         print("-v", end=" ")
     print(f"{conf.domain}")
 
+    lookup_start = time.time()
     answer = lookup(conf.domain, conf.nameserver, conf.port)
+    lookup_end = time.time()
+
     PrettyPrinter.print(answer)
+
+    lookup_time_msec = int((lookup_end - lookup_start) * 1000)
+    print(f";; Query time: {lookup_time_msec} msec")
+    print(f";; SERVER: {answer.nameserver}#{answer.port}")
+    local_time = time.localtime(lookup_end)
+    formatted_time = time.strftime("%a %b %d %H:%M:%S %Z %Y", local_time)
+    print(f";; WHEN: {formatted_time}")
+    print(f";; MSG SIZE  rcvd: {len(answer.response.to_wire())}")
 
 
 if __name__ == "__main__":

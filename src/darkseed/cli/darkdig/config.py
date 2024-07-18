@@ -54,7 +54,7 @@ def parse_args():
         "-p",
         "--port",
         type=int,
-        default="",
+        default=53,
         help="Nameserver port to use",
     )
 
