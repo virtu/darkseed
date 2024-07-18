@@ -11,37 +11,42 @@ Tool to query a DNS peer and decode custom DNS NULL records used by `darkseed`.
 Example:
 
 ```bash
-darkdig seed.21.ninja --nameserver 127.0.0.1 -p 8053 -v
-; <<>> darkdig 0.1.0 <<>> @127.0.0.1 -p 8053 -v seed.21.ninja
-;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 64611
+darkdig seed.21.ninja. --nameserver 65.21.252.171
+; <<>> darkdig 0.1.0 <<>> @65.21.252.171 -p 53 seed.21.ninja.
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 20782
 ;; flags: qr rd, QUERY: 1, ANSWER: 3, AUTHORITY: 0, ADDITIONAL: 0
 
 ;;QUESTION SECTION:
 ; domain=seed.21.ninja., rdclass=IN, rdtype=A
 
 ;;ANSWER SECTION:
-; domain=seed.21.ninja., ttl=60, rdclass=IN, rdtype=NULL
-; ->>custom NULL encoding<<- size: 133, records: 4, data (base64): BADlX6fJH9wLJ4vNI4b7uuThyXecuYdWt0ogP0yuNTY7fgC2UPMovBhvC+qhE5vX8qV2jXsMGNatZGWQW/cCe0beVgGhrdyE8tPrI10EUtgvZ5nw+iril+PFN5dUGdJr1Al09AFXvroRHeKFpJJEU5ym1eZhDoOcribiHiVksmjY3GaR/w
-; ->>custom NULL encoding<<- record: 0, address: 4vp2psi73qfspc6neodpxoxe4hexphfzq5llosrah5gk4njwhn7hzlqd.onion
-; ->>custom NULL encoding<<- record: 1, address: wzipgkf4dbxqx2vbcon5p4vfo2gxwday22wwizmqlp3qe62g3zliatad.onion
-; ->>custom NULL encoding<<- record: 2, address: ugw5zbhs2pvsgxieklmc6z4z6d5cvyux4pctpf2udhjgxvajot2a.b32.i2p
-; ->>custom NULL encoding<<- record: 3, address: k67luei54kc2jesekooknvpgmehihhfoe3rb4jlewjunrxdgsh7q.b32.i2p
-; domain=seed.21.ninja., ttl=60, rdclass=IN, rdtype=AAAA, data=fccb:248:11a6:1042:bca:1218:f7ce:7d3d
-; domain=seed.21.ninja., ttl=60, rdclass=IN, rdtype=AAAA, data=fc6d:f562:86a0:791d:8a20:7aa2:8879:2176
-; domain=seed.21.ninja., ttl=60, rdclass=IN, rdtype=AAAA, data=2001:b011:e002:df83:3cdd:7949:320d:865b
-; domain=seed.21.ninja., ttl=60, rdclass=IN, rdtype=AAAA, data=2a04:52c0:104:160c::1
-; domain=seed.21.ninja., ttl=60, rdclass=IN, rdtype=AAAA, data=2a05:d012:42a:5701:cbeb:c40e:a5eb:318d
-; domain=seed.21.ninja., ttl=60, rdclass=IN, rdtype=AAAA, data=2a01:4f9:2b:2655::2
-; domain=seed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=188.60.101.105
-; domain=seed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=203.59.154.173
-; domain=seed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=1.234.244.89
-; domain=seed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=69.4.94.226
-; domain=seed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=87.122.8.70
-; domain=seed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=222.186.20.60
-; domain=seed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=192.99.0.26
-; domain=seed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=78.8.77.58
-; domain=seed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=54.193.21.65
-; domain=seed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=165.227.203.131
+domain=seed.21.ninja., ttl=60, rdclass=IN, rdtype=NULL
+;; ->>custom NULL encoding<<- size: 133, records: 4, data (base64): BADgSkKoWXhu1bfnzGpGNkkEIzSTOAgAoZ5/J2wtc1IAngBp4Dtx743NW94Xmgeyxv2f9zExg1dkC/wc2LtR+bC3iwFJfOkRvTRPeJfKkPxUV6Vw/miozV++IkwoJFU/9njzYgHHxAOAW7YP5V6BshWIuCTngs6c5OOrdvCX9kunJUoFow
+;; ->>custom NULL-encoded address <<- record: 0, address: 4bfefkczpbxnln7hzrvemnsjaqrtjezybaakdht7e5wc242sacpizhid.onion
+;; ->>custom NULL-encoded address <<- record: 1, address: nhqdw4pprxgvxxqxtid3frx5t73tcmmdk5sax7a43c5vd6nqw6fxpxad.onion
+;; ->>custom NULL-encoded address <<- record: 2, address: jf6osen5grhxrf6ksd6fiv5fod7grkgnl67cetbierkt75ty6nra.b32.i2p
+;; ->>custom NULL-encoded address <<- record: 3, address: y7cahac3wyh6kxubwikyrobe46bm5hhe4ovxn4ex6zf2ojkkawrq.b32.i2p
+domain=seed.21.ninja., ttl=60, rdclass=IN, rdtype=AAAA, data=fca0:151:79ac:8992:b51e:bdc4:6ed9:41be
+domain=seed.21.ninja., ttl=60, rdclass=IN, rdtype=AAAA, data=fc32:17ea:e415:c3bf:9808:149d:b5a2:c9aa
+domain=seed.21.ninja., ttl=60, rdclass=IN, rdtype=AAAA, data=2a02:c206:2181:1209::1
+domain=seed.21.ninja., ttl=60, rdclass=IN, rdtype=AAAA, data=2003:e3:f746:aa00:be24:11ff:fe64:c6a
+domain=seed.21.ninja., ttl=60, rdclass=IN, rdtype=AAAA, data=2406:da18:9f1:f300:6d30:bf12:8a1b:873b
+domain=seed.21.ninja., ttl=60, rdclass=IN, rdtype=AAAA, data=2a01:4f9:1a:ae1a::2
+domain=seed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=3.144.223.134
+domain=seed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=16.163.188.199
+domain=seed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=3.132.226.114
+domain=seed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=15.207.111.189
+domain=seed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=191.255.221.37
+domain=seed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=84.56.144.51
+domain=seed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=70.76.245.12
+domain=seed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=149.202.85.112
+domain=seed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=78.46.80.246
+domain=seed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=185.210.125.33
+
+;; Query time: 77 msec
+;; SERVER: 65.21.252.171#53
+;; WHEN: Thu Jul 18 11:13:12 CEST 2024
+;; MSG SIZE  rcvd: 504
 ```
 
 NOTE: The repository contains a Nix flake so to test without installing you can use `nix
