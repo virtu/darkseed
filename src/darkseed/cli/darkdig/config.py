@@ -12,6 +12,7 @@ class Config:
     domain: str
     nameserver: str
     port: int
+    type: str
 
     @classmethod
     def parse(cls, args):
@@ -22,6 +23,7 @@ class Config:
             domain=args.domain,
             nameserver=args.nameserver,
             port=args.port,
+            type=args.type,
         )
 
     def to_dict(self):
@@ -47,7 +49,7 @@ def parse_args():
         "--nameserver",
         type=str,
         default="",
-        help="Nameserver to use",
+        help="Nameserver to use [default: system]",
     )
 
     parser.add_argument(
@@ -55,7 +57,15 @@ def parse_args():
         "--port",
         type=int,
         default=53,
-        help="Nameserver port to use",
+        help="Nameserver port to use [default: 53]",
+    )
+
+    parser.add_argument(
+        "-t",
+        "--type",
+        type=str,
+        default="ANY",
+        help="Query type (A, AAAA, NULL, ...) [default: ANY]",
     )
 
     parser.add_argument("domain", type=str, help="DNS query domain")
