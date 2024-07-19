@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 from typing import ClassVar, List
 
 import dns.message
+import dns.rdataclass
 import dns.rdatatype
 import dns.rrset
 
@@ -40,9 +41,22 @@ class DNSResponder:
         """Handle DNS request: marshall data and send response."""
         data, socket = request[0].strip(), request[1]
         request = dns.message.from_wire(data)
-        domain = [q.name.to_text(omit_final_dot=True) for q in request.question]
-        log.debug("Received DNS request from %s for %s", address, domain)
-        response = self.create_response(request)
+        if len(request.question) != 1:
+            log.error("Received DNS request with multiple questions: ignoring")
+            return
+
+        question = request.question[0]
+        qdomain = question.name.to_text(omit_final_dot=False)
+        qtype = dns.rdatatype.to_text(question.rdtype)
+        qclass = dns.rdataclass.to_text(question.rdclass)
+        log.debug(
+            "Received DNS request from %s: domain=%s, class=%s, type=%s",
+            address,
+            qdomain,
+            qclass,
+            qtype,
+        )
+        response = self.create_response(qdomain, request)
         socket.sendto(response, address)
         log.debug("Sent DNS response (size=%d, to=%s)", len(response), address)
 
@@ -60,16 +74,16 @@ class DNSResponder:
         return random.sample(addresses, min(count, len(nodes)))
 
     def add_records_to_response(
-        self, response, addresses: List[Address], encoding: str = "regular"
+        self, domain: str, response, addresses: List[Address], encoding: str = "regular"
     ):
         """Add records for the nodes to the DNS response."""
         if encoding == "regular":
             for address in addresses:
-                record = RecordBuilder.build_record(address)
+                record = RecordBuilder.build_record(address, domain)
                 response.answer.append(record)
             num_recs, num_addrs = len(addresses), len(addresses)
         elif encoding == "custom":
-            record = MultiAddressCodec.build_record(addresses)
+            record = MultiAddressCodec.build_record(addresses, domain)
             response.answer.append(record)
             num_recs, num_addrs = 1, len(addresses)
         else:
@@ -82,7 +96,7 @@ class DNSResponder:
             size,
         )
 
-    def create_response(self, request) -> bytes:
+    def create_response(self, domain: str, request) -> bytes:
         """Create DNS response."""
         # TODO: output error if we run out of nodes or there's an issue with
         # the reply's size
@@ -101,17 +115,17 @@ class DNSResponder:
         onion_nodes = self.get_random_addresses("onion", num_darknet)
         i2p_nodes = self.get_random_addresses("i2p", num_darknet)
         multi_addrs = onion_nodes + i2p_nodes
-        self.add_records_to_response(response, multi_addrs, "custom")
+        self.add_records_to_response(domain, response, multi_addrs, "custom")
 
         # add nodes with A and AAAA records
         self.add_records_to_response(
-            response, self.get_random_addresses("cjdns", num_darknet)
+            domain, response, self.get_random_addresses("cjdns", num_darknet)
         )
         self.add_records_to_response(
-            response, self.get_random_addresses("ipv4", num_ipv4)
+            domain, response, self.get_random_addresses("ipv4", num_ipv4)
         )
         self.add_records_to_response(
-            response, self.get_random_addresses("ipv6", num_ipv6)
+            domain, response, self.get_random_addresses("ipv6", num_ipv6)
         )
 
         log.info(

@@ -17,9 +17,7 @@ class RecordBuilder:
     """Class for building DNS resource records."""
 
     @staticmethod
-    def build_record(
-        address: Address, domain: str = "seed.21.ninja.", ttl: int = 60
-    ) -> dns.rrset.RRset:
+    def build_record(address: Address, domain: str, ttl: int = 60) -> dns.rrset.RRset:
         """Build a DNS record for a node using the specified encoding."""
         if not (address.ipv4 or address.ipv6 or address.cjdns):
             raise ValueError(f"Unsupported address type: {address.net_type}")

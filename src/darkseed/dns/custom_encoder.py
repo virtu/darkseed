@@ -108,9 +108,7 @@ class MultiAddressCodec:
 
     @staticmethod
     def build_record(
-        addresses: list[Address],
-        domain: str = "seed.21.ninja.",
-        ttl: int = 60,
+        addresses: list[Address], domain: str, ttl: int = 60
     ) -> dns.rrset.RRset:
         """Encode multiple addresses into a single DNS NULL record."""
         num_records = len(addresses)
