@@ -18,11 +18,28 @@ from .custom_encoder import MultiAddressCodec
 from .record_builder import RecordBuilder
 
 
+@dataclass
+class NetCount:
+    """Class representing the counts for different network types."""
+
+    ipv4: int
+    ipv6: int
+    onion: int
+    i2p: int
+    cjdns: int
+
+
 class DNSResponder:
     """DNS responder."""
 
     reachable_nodes: List[Node] = field(default_factory=list)
     REPLY_SIZE_LIMIT: ClassVar[int] = 512
+    RDTYPE_TO_NETCOUNT: ClassVar[dict[str, NetCount]] = {
+        "A": NetCount(ipv4=29, ipv6=0, onion=0, i2p=0, cjdns=0),
+        "AAAA": NetCount(ipv4=0, ipv6=17, onion=0, i2p=0, cjdns=0),
+        "NULL": NetCount(ipv4=0, ipv6=0, onion=5, i2p=5, cjdns=4),
+        "ANY": NetCount(ipv4=10, ipv6=4, onion=2, i2p=2, cjdns=2),
+    }
 
     def set_reachable_nodes(self, nodes):
         """Set reachable nodes."""
@@ -56,7 +73,7 @@ class DNSResponder:
             qclass,
             qtype,
         )
-        response = self.create_response(qdomain, request)
+        response = self.create_response(request)
         socket.sendto(response, address)
         log.debug("Sent DNS response (size=%d, to=%s)", len(response), address)
 
@@ -96,7 +113,7 @@ class DNSResponder:
             size,
         )
 
-    def create_response(self, domain: str, request) -> bytes:
+    def create_response(self, request: dns.message.Message) -> bytes:
         """Create DNS response."""
         # TODO: output error if we run out of nodes or there's an issue with
         # the reply's size
@@ -109,24 +126,31 @@ class DNSResponder:
             return bytes()
         num_recs = 0
 
-        num_darknet, num_ipv4, num_ipv6 = 2, 10, 4
+        question = request.question[0]
+        domain = question.name.to_text(omit_final_dot=False)
+        rdtype = dns.rdatatype.to_text(question.rdtype)
+        netcount = DNSResponder.RDTYPE_TO_NETCOUNT[rdtype]
 
-        # add onion and cjdns nodes using custom encoding
-        onion_nodes = self.get_random_addresses("onion", num_darknet)
-        i2p_nodes = self.get_random_addresses("i2p", num_darknet)
-        multi_addrs = onion_nodes + i2p_nodes
-        self.add_records_to_response(domain, response, multi_addrs, "custom")
+        if netcount.cjdns:
+            self.add_records_to_response(
+                domain, response, self.get_random_addresses("cjdns", netcount.cjdns)
+            )
 
-        # add nodes with A and AAAA records
-        self.add_records_to_response(
-            domain, response, self.get_random_addresses("cjdns", num_darknet)
-        )
-        self.add_records_to_response(
-            domain, response, self.get_random_addresses("ipv4", num_ipv4)
-        )
-        self.add_records_to_response(
-            domain, response, self.get_random_addresses("ipv6", num_ipv6)
-        )
+        if netcount.ipv4:
+            self.add_records_to_response(
+                domain, response, self.get_random_addresses("ipv4", netcount.ipv4)
+            )
+
+        if netcount.ipv6:
+            self.add_records_to_response(
+                domain, response, self.get_random_addresses("ipv6", netcount.ipv6)
+            )
+
+        # onion and i2p nodes are encoded in NULL records
+        if netcount.onion or netcount.i2p:
+            null_addrs = self.get_random_addresses("onion", netcount.onion)
+            null_addrs += self.get_random_addresses("i2p", netcount.i2p)
+            self.add_records_to_response(domain, response, null_addrs, "custom")
 
         log.info(
             "Created response (size=%dB, records=%d)", len(response.to_wire()), num_recs
