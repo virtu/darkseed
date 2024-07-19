@@ -1,11 +1,12 @@
 """CLI for darkdig."""
 
-
 import base64
 import importlib.metadata
+import sys
 import time
 
 import dns.flags
+import dns.message
 import dns.opcode
 import dns.query
 import dns.rcode
@@ -22,17 +23,21 @@ from .config import get_config
 __version__ = importlib.metadata.version("darkseed")
 
 
-def lookup(
-    domain: str, nameserver: str, port: int, ctype: str = "A"
-) -> dns.resolver.Answer:
-    """Look up DNS records for a domain."""
+def lookup(domain: str, nameserver: str, port: int, qtype: str) -> dns.message.Message:
+    """Look up DNS records for a domain.
 
-    resolver = dns.resolver.Resolver()
-    resolver.nameservers = [nameserver]
-    resolver.port = port
+    Uses low-level dns.query instead of dns.resolver to allow "ANY" queries.
+    """
 
-    answer = resolver.resolve(domain, ctype)
-    return answer
+    query = dns.message.make_query(domain, qtype)
+
+    try:
+        response = dns.query.udp(query, nameserver, port=port)
+        # print(response)
+        return response
+    except Exception as e:  # pylint: disable=broad-except
+        print("Failed to retrieve DNS records:", e)
+        sys.exit(1)
 
 
 class PrettyPrinter:
@@ -53,53 +58,49 @@ class PrettyPrinter:
         print(f"AUTHORITY: {len(response.sections[2])}", end=", ")
         print(f"ADDITIONAL: {len(response.sections[3])}")
 
-        # Todo: WARNING IF Recursion requested but not available
-
         print("\n", end="")
 
     @staticmethod
-    def print_question_section(response):
+    def print_question_section(response: dns.message.Message):
         """Print DNS query response question section."""
-        domain = response.canonical_name()
         print(";;QUESTION SECTION:")
         for rrset in response.section_from_number(0):
             print(
-                f"; domain={domain},"
+                f"; domain={rrset.name},"
                 f" rdclass={dns.rdataclass.to_text(rrset.rdclass)},"
                 f" rdtype={dns.rdatatype.to_text(rrset.rdtype)}"
             )
         print("\n", end="")
 
     @staticmethod
-    def print_authority_section(response):
+    def print_authority_section(response: dns.message.Message):
         """Print DNS query response authority section."""
         if len(response.sections[2]):
             raise NotImplementedError("Authority section not implemented yet.")
 
     @staticmethod
-    def print_additional_section(response):
+    def print_additional_section(response: dns.message.Message):
         """Print DNS query response additional section."""
         if len(response.sections[2]):
             raise NotImplementedError("Additional section not implemented yet.")
 
     @staticmethod
-    def print_answer_section(response):
+    def print_answer_section(response: dns.message.Message):
         """Print DNS query response answer section."""
-        domain = response.canonical_name()
         print(";;ANSWER SECTION:")
         for rrset in response.section_from_number(1):
             for rdata in rrset:
                 if rdata.rdtype != dns.rdatatype.NULL:
-                    PrettyPrinter.print_regular_answer_record(domain, rrset, rdata)
+                    PrettyPrinter.print_regular_answer_record(rrset, rdata)
                 else:
-                    PrettyPrinter.print_null_answer_record(domain, rrset, rdata)
+                    PrettyPrinter.print_null_answer_record(rrset, rdata)
         print("\n", end="")
 
     @staticmethod
-    def print_regular_answer_record(domain, rrset, rdata):
+    def print_regular_answer_record(rrset, rdata):
         """Print one regular DNS query response answer record."""
         print(
-            f"domain={domain},"
+            f"domain={rrset.name},"
             f" ttl={rrset.ttl},"
             f" rdclass={dns.rdataclass.to_text(rrset.rdclass)},"
             f" rdtype={dns.rdatatype.to_text(rrset.rdtype)},"
@@ -107,11 +108,11 @@ class PrettyPrinter:
         )
 
     @staticmethod
-    def print_null_answer_record(domain, rrset, rdata):
+    def print_null_answer_record(rrset, rdata):
         """Print one custom NULL-encoded DNS query response answer record."""
 
         print(
-            f"domain={domain},"
+            f"domain={rrset.name},"
             f" ttl={rrset.ttl},"
             f" rdclass={dns.rdataclass.to_text(rrset.rdclass)},"
             f" rdtype={dns.rdatatype.to_text(rrset.rdtype)}"
@@ -130,7 +131,7 @@ class PrettyPrinter:
             print(f"address: {record._address}")
 
     @staticmethod
-    def print_sections(response):
+    def print_sections(response: dns.message.Message):
         """Print DNS query response sections."""
 
         PrettyPrinter.print_question_section(response)
@@ -139,9 +140,8 @@ class PrettyPrinter:
         PrettyPrinter.print_additional_section(response)
 
     @staticmethod
-    def print(answer):
+    def print(response: dns.message.Message):
         """Pretty print DNS query response."""
-        response = answer.response
         PrettyPrinter.print_header(response)
         PrettyPrinter.print_sections(response)
 
@@ -150,26 +150,28 @@ def main():
     """Entry point."""
     conf = get_config()
     print(f"; <<>> darkdig {__version__} <<>>", end=" ")
-    if conf.nameserver:
-        print(f"@{conf.nameserver}", end=" ")
-        print(f"-p {conf.port}", end=" ")
+    if not conf.nameserver:
+        resolver = dns.resolver.Resolver()
+        conf.nameserver = str(resolver.nameservers[0])
+    print(f"@{conf.nameserver}", end=" ")
+    print(f"-p {conf.port}", end=" ")
     if conf.verbose:
         print("-v", end=" ")
     print(f"{conf.domain}")
 
     lookup_start = time.time()
-    answer = lookup(conf.domain, conf.nameserver, conf.port)
+    response = lookup(conf.domain, conf.nameserver, conf.port, conf.type)
     lookup_end = time.time()
 
-    PrettyPrinter.print(answer)
+    PrettyPrinter.print(response)
 
     lookup_time_msec = int((lookup_end - lookup_start) * 1000)
     print(f";; Query time: {lookup_time_msec} msec")
-    print(f";; SERVER: {answer.nameserver}#{answer.port}")
+    print(f";; SERVER: {conf.nameserver}#{conf.port}")
     local_time = time.localtime(lookup_end)
     formatted_time = time.strftime("%a %b %d %H:%M:%S %Z %Y", local_time)
     print(f";; WHEN: {formatted_time}")
-    print(f";; MSG SIZE  rcvd: {len(answer.response.to_wire())}")
+    print(f";; MSG SIZE  rcvd: {len(response.to_wire())}")
 
 
 if __name__ == "__main__":
