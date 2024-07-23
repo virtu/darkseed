@@ -27,6 +27,7 @@ class CommandServerHandler(socketserver.BaseRequestHandler):
 
 def start_command_server():
     server = socketserver.TCPServer(("localhost", 8054), CommandServerHandler)
+    log.info("Started CommandServer thread.")
     server.serve_forever()
 
 
@@ -44,15 +45,12 @@ def main():
 
     command_thread = threading.Thread(target=start_command_server)
     command_thread.start()
-    log.info("Started CommandServer thread.")
 
     node_provider = NodeLoader(conf.crawler_path)
     node_provider.start()
-    log.info("Started NodeLoader thread.")
 
     dns_server = DNSServer(address=conf.dns_address, port=conf.dns_port)
     dns_server.start()
-    log.info("Started DNSServer thread.")
 
 
 if __name__ == "__main__":

@@ -26,13 +26,15 @@ class NodeLoader(threading.Thread):
     def __post_init__(self):
         super().__init__(name=self.__class__.__name__)
 
-    def run(self):
+    def start(self):
+        log.info("Started NodeLoader thread.")
         self.get_latest_data()
 
-        log.debug("Sleeping for %d seconds", self.refresh)
-        time.sleep(self.refresh)
-        self.get_latest_data()
-        log.debug("Waking after %d seconds", self.refresh)
+        while True:
+            log.debug("Sleeping for %d seconds", self.refresh)
+            time.sleep(self.refresh)
+            self.get_latest_data()
+            log.debug("Waking after %d seconds", self.refresh)
 
     def get_latest_file(self):
         """Get latest reachable nodes file."""
