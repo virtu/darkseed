@@ -131,11 +131,6 @@ class DNSResponder:
         rdtype = dns.rdatatype.to_text(question.rdtype)
         netcount = DNSResponder.RDTYPE_TO_NETCOUNT[rdtype]
 
-        if netcount.cjdns:
-            self.add_records_to_response(
-                domain, response, self.get_random_addresses("cjdns", netcount.cjdns)
-            )
-
         if netcount.ipv4:
             self.add_records_to_response(
                 domain, response, self.get_random_addresses("ipv4", netcount.ipv4)
@@ -144,6 +139,11 @@ class DNSResponder:
         if netcount.ipv6:
             self.add_records_to_response(
                 domain, response, self.get_random_addresses("ipv6", netcount.ipv6)
+            )
+
+        if netcount.cjdns:
+            self.add_records_to_response(
+                domain, response, self.get_random_addresses("cjdns", netcount.cjdns)
             )
 
         # onion and i2p nodes are encoded in NULL records
