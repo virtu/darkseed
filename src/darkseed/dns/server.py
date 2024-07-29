@@ -159,9 +159,6 @@ class DNSResponder:
         return response.to_wire()
 
 
-dns_responder = DNSResponder()
-
-
 class DNSRequestBridge(socketserver.BaseRequestHandler):
     """
     Class to bridge between UDPServer and DNSResponder.
@@ -170,9 +167,13 @@ class DNSRequestBridge(socketserver.BaseRequestHandler):
     inherits from, cannot easily be extended.
     """
 
+    def __init__(self, request, client_address, server, dns_responder):
+        self.dns_responder = dns_responder
+        super().__init__(request, client_address, server)
+
     def handle(self):
         """Bridge DNS request to DNSResponder."""
-        dns_responder.handle(self.request, self.client_address)
+        self.dns_responder.handle(self.request, self.client_address)
 
 
 @dataclass(unsafe_hash=True)
@@ -181,12 +182,22 @@ class DNSServer(threading.Thread):
 
     address: str
     port: int
+    dns_responder: DNSResponder = field(default_factory=DNSResponder, init=False)
 
     def __post_init__(self):
         super().__init__(name=self.__class__.__name__)
 
-    def start(self):
+    def run(self):
         """Start DNS server thread."""
         log.info("Starting DNS server on %s:%d", self.address, self.port)
-        server = socketserver.UDPServer((self.address, self.port), DNSRequestBridge)
+        server = socketserver.UDPServer(
+            (self.address, self.port),
+            lambda *args, **kwargs: DNSRequestBridge(
+                *args, dns_responder=self.dns_responder, **kwargs
+            ),
+        )
         server.serve_forever()
+
+    def get_update_function(self):
+        """Return the set_reachable_nodes function of the DNSResponder."""
+        return self.dns_responder.set_reachable_nodes
