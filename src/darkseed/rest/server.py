@@ -1,6 +1,7 @@
 """REST API server for Darkseed."""
 
 import logging as log
+import random
 from threading import Thread
 
 from flask import Flask, jsonify
@@ -22,7 +23,7 @@ class RESTServer:
 
         @self.app.route("/nodes", methods=["GET"])
         def get_nodes():
-            """Get all reachable nodes."""
+            """Get reachable nodes of different network types."""
             return self._get_nodes_response()
 
         @self.app.route("/nodes/ipv4", methods=["GET"])
@@ -50,20 +51,25 @@ class RESTServer:
             """Get reachable CJDNS nodes."""
             return self._get_nodes_response(node_type="cjdns")
 
-    def _get_nodes_response(self, node_type=None):
+    def _get_nodes_response(self, node_type=None, num_requested=32):
+        """Select a specific number of address based on address type."""
         if not self.reachable_nodes:
             return jsonify({"error": "No reachable nodes available"}), 500
 
-        nodes = [
-            {
-                "address": node.address.address,
-            }
-            for node in self.reachable_nodes
-            if not node_type or getattr(node.address, node_type)
-        ][
-            :16
-        ]  # Limit to a maximum of 16 nodes
-        return jsonify(nodes), 200
+        addresses = [n.address for n in self.reachable_nodes]
+        if node_type:
+            addresses = [a for a in addresses if getattr(a, node_type)]
+        num_available = len(addresses)
+        num_addresses = min(num_requested, num_available)
+        if num_addresses < num_requested:
+            log.warning(
+                "Insufficient addresses (requested=%d, available=%d): returning %d.",
+                num_requested,
+                num_available,
+                num_addresses,
+            )
+        addresses = random.sample(addresses, num_addresses)
+        return jsonify(addresses), 200
 
     def start(self):
         """Start REST server thread."""
