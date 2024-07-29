@@ -96,7 +96,7 @@ def parse_args():
         "--rest-port",
         type=int,
         default=80,
-        help="UDP port used by the REST server",
+        help="TCP port used by the REST server",
     )
 
     parser.add_argument(
