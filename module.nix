@@ -10,8 +10,17 @@ in
   options.services.darkseed = {
     enable = mkEnableOption "darkseed";
 
-    enableTor = mkEnableOption "darkseed via TOR";
-    enableI2p = mkEnableOption "darkseed via I2P";
+    tor.enable = mkEnableOption "darkseed via TOR";
+    i2p.enable = mkEnableOption "darkseed via I2P";
+    cjdns = {
+      enable = mkEnableOption "darkseed via CJDNS";
+      address = mkOption {
+        type = types.nullOr types.str;
+        default = null;
+        example = "fcf9:45bc:8c48:6973:7b3f:5538:6e51:8fc9";
+        description = mdDoc "Address used by CJDNS server.";
+      };
+    };
 
     logLevel = mkOption {
       type = types.str;
@@ -54,12 +63,16 @@ in
   };
 
   config = mkIf cfg.enable {
+    assertions = [
+      { assertion = !(cfg.cjdns.enable && cfg.cjdns.address == null); message = "services.darkseed.cjdns.address must be set when services.darkseed.cjdns.enable is true."; }
+    ];
+
     networking.firewall = {
       allowedUDPPorts = [ cfg.dns.port ];
       allowedTCPPorts = [ cfg.rest.port ];
     };
 
-    services.tor = mkIf cfg.enableTor {
+    services.tor = mkIf cfg.tor.enable {
       enable = true;
       enableGeoIP = false;
       relay.onionServices = {
@@ -73,17 +86,30 @@ in
       };
     };
 
-    services.i2p = mkIf cfg.enableI2p {
+    services.i2pd = mkIf cfg.i2p.enable {
       enable = true;
       inTunnels.darkseed = {
         enable = true;
         inPort = cfg.rest.port;
-        # destination (my i2p address?)
+        destination = cfg.rest.address;
         address = cfg.rest.address;
         port = cfg.rest.port;
       };
     };
 
+    services.nginx = mkIf cfg.cjdns.enable {
+      enable = true;
+      recommendedGzipSettings = true;
+      recommendedOptimisation = true;
+      recommendedProxySettings = true;
+      recommendedTlsSettings = true;
+      virtualHosts = {
+        darkseed = {
+          listen = [{ addr = "[${cfg.cjdns.address}]"; port = cfg.rest.port; }];
+          locations."/" = { proxyPass = "http://${cfg.rest.address}:${toString cfg.rest.port}"; };
+        };
+      };
+    };
 
     systemd.services.darkseed = {
       description = "darkseed";
