@@ -9,6 +9,7 @@ readme = "README.md"
 [tool.poetry.dependencies]
 python = ">=3.11"
 dnspython = "^2.6.1"
+flask = "^3.0.3"
 
 [build-system]
 requires = ["poetry-core"]

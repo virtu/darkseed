@@ -9,9 +9,8 @@ from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import ClassVar
+from typing import Callable, ClassVar
 
-from darkseed.dns import dns_responder
 from darkseed.node import Node
 
 
@@ -20,6 +19,8 @@ class NodeLoader(threading.Thread):
     """Class that provides reachable nodes data."""
 
     path: Path
+    dns_update_function: Callable
+    rest_update_function: Callable
     refresh: int = 600  # refresh frequency in seconds. default: ten minutes
     MAINNET_PORT: ClassVar[int] = 8333
 
@@ -27,12 +28,14 @@ class NodeLoader(threading.Thread):
         super().__init__(name=self.__class__.__name__)
 
     def run(self):
+        log.info("Started NodeLoader thread.")
         self.get_latest_data()
 
-        log.debug("Sleeping for %d seconds", self.refresh)
-        time.sleep(self.refresh)
-        self.get_latest_data()
-        log.debug("Waking after %d seconds", self.refresh)
+        while True:
+            log.debug("Sleeping for %d seconds", self.refresh)
+            time.sleep(self.refresh)
+            self.get_latest_data()
+            log.debug("Waking after %d seconds", self.refresh)
 
     def get_latest_file(self):
         """Get latest reachable nodes file."""
@@ -89,5 +92,7 @@ class NodeLoader(threading.Thread):
 
         data_file = self.get_latest_file()
         nodes = self.read_data_file(data_file)
-        dns_responder.set_reachable_nodes(nodes)
-        log.debug("Updated reachable nodes in dns_responder")
+        self.dns_update_function(nodes)
+        log.debug("Updated reachable nodes in DNS server.")
+        self.rest_update_function(nodes)
+        log.debug("Updated reachable nodes in REST server.")
