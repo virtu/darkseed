@@ -11,6 +11,7 @@ in
     enable = mkEnableOption "darkseed";
 
     enableTor = mkEnableOption "darkseed via TOR";
+    enableI2p = mkEnableOption "darkseed via I2P";
 
     logLevel = mkOption {
       type = types.str;
@@ -71,6 +72,18 @@ in
         };
       };
     };
+
+    services.i2p = mkIf cfg.enableI2p {
+      enable = true;
+      inTunnels.darkseed = {
+        enable = true;
+        inPort = cfg.rest.port;
+        # destination (my i2p address?)
+        address = cfg.rest.address;
+        port = cfg.rest.port;
+      };
+    };
+
 
     systemd.services.darkseed = {
       description = "darkseed";
