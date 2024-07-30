@@ -161,3 +161,6 @@ cython_debug/
 
 # direnv
 .direnv
+
+# reachable node data from crawler for testing
+test_data
