@@ -1,10 +1,9 @@
 """DNS functionality for Darkseed."""
 
 import logging as log
-import random
 import socketserver
 import threading
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import ClassVar, List
 
 import dns.message
@@ -12,168 +11,138 @@ import dns.rdataclass
 import dns.rdatatype
 import dns.rrset
 
-from darkseed.node import Address, Node
+from darkseed.node import Address, NetworkType
+from darkseed.node_manager import NodeManager
 
 from .custom_encoder import MultiAddressCodec
 from .record_builder import RecordBuilder
 
 
 @dataclass
-class NetCount:
-    """Class representing the counts for different network types."""
+class DNSConstants:
+    """DNS protocol constants."""
 
-    ipv4: int
-    ipv6: int
-    onion: int
-    i2p: int
-    cjdns: int
+    UDP_SIZE_LIMIT: ClassVar[int] = 512
+    TCP_SIZE_LIMIT: ClassVar[int] = 65535
 
 
-class DNSResponder:
-    """DNS responder."""
+@dataclass
+class DNSHandler:
+    """Class for handling DNS requests.
 
-    reachable_nodes: List[Node] = field(default_factory=list)
-    REPLY_SIZE_LIMIT: ClassVar[int] = 512
-    RDTYPE_TO_NETCOUNT: ClassVar[dict[str, NetCount]] = {
-        "A": NetCount(ipv4=29, ipv6=0, onion=0, i2p=0, cjdns=0),
-        "AAAA": NetCount(ipv4=0, ipv6=17, onion=0, i2p=0, cjdns=0),
-        "NULL": NetCount(ipv4=0, ipv6=0, onion=5, i2p=5, cjdns=4),
-        "ANY": NetCount(ipv4=10, ipv6=4, onion=2, i2p=2, cjdns=2),
+    Uses a NodeManager to marshall nodes for response.
+    """
+
+    _NODE_MANAGER: ClassVar[NodeManager]
+    RDTYPE_TO_NETCOUNT: ClassVar[
+        dict[dns.rdatatype.RdataType, dict[NetworkType, int]]
+    ] = {
+        dns.rdatatype.A: {NetworkType.IPV4: 29},
+        dns.rdatatype.AAAA: {NetworkType.IPV6: 17},
+        dns.rdatatype.NULL: {
+            NetworkType.ONION_V3: 5,
+            NetworkType.I2P: 5,
+            NetworkType.CJDNS: 4,
+        },
+        dns.rdatatype.ANY: {
+            NetworkType.IPV4: 10,
+            NetworkType.IPV6: 4,
+            NetworkType.ONION_V3: 2,
+            NetworkType.I2P: 2,
+            NetworkType.CJDNS: 2,
+        },
     }
 
-    def set_reachable_nodes(self, nodes):
-        """Set reachable nodes."""
-        self.reachable_nodes = nodes
-        log.info(
-            "Updated reachable node pool: total=%d, ipv4=%d, ipv6=%d, onion_v3=%d, i2p=%d, cjdns=%d",
-            len(nodes),
-            len([n for n in nodes if n.address.ipv4]),
-            len([n for n in nodes if n.address.ipv6]),
-            len([n for n in nodes if n.address.onion]),
-            len([n for n in nodes if n.address.i2p]),
-            len([n for n in nodes if n.address.cjdns]),
-        )
+    @classmethod
+    def set_node_manager(cls, node_manager):
+        """Set the node manager."""
+        cls._NODE_MANAGER = node_manager
 
-    def handle(self, request, address):
-        """Handle DNS request: marshall data and send response."""
-        data, socket = request[0].strip(), request[1]
+    @classmethod
+    def process(cls, data) -> bytes:
+        """Process DNS request."""
+        if not getattr(cls, "_NODE_MANAGER", None):
+            raise RuntimeError(f"{cls.__name__}: Node manager not set")
+
         request = dns.message.from_wire(data)
         if len(request.question) != 1:
             log.error("Received DNS request with multiple questions: ignoring")
-            return
+            return request.to_wire()
 
         question = request.question[0]
         qdomain = question.name.to_text(omit_final_dot=False)
         qtype = dns.rdatatype.to_text(question.rdtype)
         qclass = dns.rdataclass.to_text(question.rdclass)
         log.debug(
-            "Received DNS request from %s: domain=%s, class=%s, type=%s",
-            address,
+            "Received DNS request for domain=%s, class=%s, type=%s",
             qdomain,
             qclass,
             qtype,
         )
-        response = self.create_response(request)
-        socket.sendto(response, address)
-        log.debug("Sent DNS response (size=%d, to=%s)", len(response), address)
 
-    def get_random_addresses(self, address_type: str, count: int):
-        """Select a specific number of address based on address type."""
-        nodes = [n for n in self.reachable_nodes if getattr(n.address, address_type)]
-        addresses = [n.address for n in nodes]
-        if len(nodes) < count:
-            log.warning(
-                "Not enough nodes to select from: count=%d, total=%d. Returning %d address(es).",
-                count,
-                len(nodes),
-                len(nodes),
-            )
-        return random.sample(addresses, min(count, len(nodes)))
+        response = cls.create_response(request)
+        log.debug("Created DNS response (size=%d)", len(response))
+        return response
 
-    def add_records_to_response(
-        self, domain: str, response, addresses: List[Address], encoding: str = "regular"
-    ):
-        """Add records for the nodes to the DNS response."""
-        if encoding == "regular":
-            for address in addresses:
-                record = RecordBuilder.build_record(address, domain)
-                response.answer.append(record)
-            num_recs, num_addrs = len(addresses), len(addresses)
-        elif encoding == "custom":
-            record = MultiAddressCodec.build_record(addresses, domain)
-            response.answer.append(record)
-            num_recs, num_addrs = 1, len(addresses)
-        else:
-            raise ValueError(f"Invalid encoding: {encoding}")
-        size = len(response.to_wire())
-        log.debug(
-            "Added %d record(s) for %d address(es) to response (size=%dB)",
-            num_recs,
-            num_addrs,
-            size,
-        )
+    @staticmethod
+    def select_addresses(rdtype: dns.rdatatype.RdataType) -> List[Address]:
+        """Get addresses based on RDTYPE in request.
 
-    def create_response(self, request: dns.message.Message) -> bytes:
+        First, look up address types and corresponding numbers to select using
+        RDTYPE. Then, request the data from the NodeManager.
+        """
+        net_to_addr_num = DNSHandler.RDTYPE_TO_NETCOUNT[rdtype]
+        addresses = []
+        for net, count in net_to_addr_num.items():
+            if count:
+                addresses += DNSHandler._NODE_MANAGER.get_random_addresses(net, count)
+        return addresses
+
+    @staticmethod
+    def create_response(request: dns.message.Message) -> bytes:
         """Create DNS response."""
-        # TODO: output error if we run out of nodes or there's an issue with
-        # the reply's size
-
         response = dns.message.make_response(request)
         response.use_edns(False)
-
-        if not self.reachable_nodes:
-            log.warning("No reachable nodes to response with: empty response.")
-            return bytes()
-        num_recs = 0
-
         question = request.question[0]
-        domain = question.name.to_text(omit_final_dot=False)
-        rdtype = dns.rdatatype.to_text(question.rdtype)
-        netcount = DNSResponder.RDTYPE_TO_NETCOUNT[rdtype]
-
-        if netcount.ipv4:
-            self.add_records_to_response(
-                domain, response, self.get_random_addresses("ipv4", netcount.ipv4)
-            )
-
-        if netcount.ipv6:
-            self.add_records_to_response(
-                domain, response, self.get_random_addresses("ipv6", netcount.ipv6)
-            )
-
-        if netcount.cjdns:
-            self.add_records_to_response(
-                domain, response, self.get_random_addresses("cjdns", netcount.cjdns)
-            )
-
-        # onion and i2p nodes are encoded in NULL records
-        if netcount.onion or netcount.i2p:
-            null_addrs = self.get_random_addresses("onion", netcount.onion)
-            null_addrs += self.get_random_addresses("i2p", netcount.i2p)
-            self.add_records_to_response(domain, response, null_addrs, "custom")
-
+        addresses = DNSHandler.select_addresses(question.rdtype)
+        DNSHandler.add_records_to_response(response, addresses)
         log.info(
-            "Created response (size=%dB, records=%d)", len(response.to_wire()), num_recs
+            "Created response (size=%dB, records=%d)",
+            len(response.to_wire()),
+            len(addresses),
         )
         log.debug("Response=%s", response.to_wire().hex())
         return response.to_wire()
 
+    @staticmethod
+    def add_records_to_response(
+        response: dns.message.Message, addresses: List[Address]
+    ):
+        """Add address records to the DNS response.
 
-class DNSRequestBridge(socketserver.BaseRequestHandler):
-    """
-    Class to bridge between UDPServer and DNSResponder.
+        1. Add individual regular record for each clearnet addresses
+        2. Add consolidated compressed record for all darknet addresses
+        """
 
-    This is necessary because the BaseRequestHandler class, which this class
-    inherits from, cannot easily be extended.
-    """
+        domain = response.question[0].name.to_text(omit_final_dot=False)
 
-    def __init__(self, request, client_address, server, dns_responder):
-        self.dns_responder = dns_responder
-        super().__init__(request, client_address, server)
+        clearnet_addrs = [a for a in addresses if a.ipv4 or a.ipv6 or a.cjdns]
+        for address in clearnet_addrs:
+            record = RecordBuilder.build_record(address, domain)
+            response.answer.append(record)
 
-    def handle(self):
-        """Bridge DNS request to DNSResponder."""
-        self.dns_responder.handle(self.request, self.client_address)
+        darknet_addrs = [a for a in addresses if not (a.ipv4 or a.ipv6 or a.cjdns)]
+        if darknet_addrs:
+            record = MultiAddressCodec.build_record(darknet_addrs, domain)
+            response.answer.append(record)
+
+        size = len(response.to_wire())
+        log.debug(
+            "Added %d record(s) for %d address(es) to response (size=%dB)",
+            len(clearnet_addrs) + 1,
+            len(clearnet_addrs) + len(darknet_addrs),
+            size,
+        )
 
 
 @dataclass(unsafe_hash=True)
@@ -182,22 +151,75 @@ class DNSServer(threading.Thread):
 
     address: str
     port: int
-    dns_responder: DNSResponder = field(default_factory=DNSResponder, init=False)
+    node_manager: NodeManager
 
     def __post_init__(self):
         super().__init__(name=self.__class__.__name__)
+        DNSHandler.set_node_manager(self.node_manager)
 
     def run(self):
-        """Start DNS server thread."""
-        log.info("Starting DNS server on %s:%d", self.address, self.port)
-        server = socketserver.UDPServer(
-            (self.address, self.port),
-            lambda *args, **kwargs: DNSRequestBridge(
-                *args, dns_responder=self.dns_responder, **kwargs
-            ),
+        """Start TCP and UDP DNS server threads."""
+        udp_thread = threading.Thread(
+            target=self.run_server,
+            args=(socketserver.UDPServer, UDPRequestHandler),
+            name="UDP Server",
         )
+        udp_thread.start()
+        tcp_thread = threading.Thread(
+            target=self.run_server,
+            args=(
+                socketserver.TCPServer,
+                TCPRequestHandler,
+            ),
+            name="TCP Server",
+        )
+        tcp_thread.start()
+
+    def run_server(
+        self,
+        server_class: socketserver.BaseServer,
+        handler_class: socketserver.BaseRequestHandler,
+    ):
+        """Generic method to setup and run a DNS server, either UDP or TCP."""
+        server = server_class((self.address, self.port), handler_class)
+        server_type = "UDP" if server_class == socketserver.UDPServer else "TCP"
+        log.info("Starting %s server on %s:%d", server_type, self.address, self.port)
         server.serve_forever()
 
-    def get_update_function(self):
-        """Return the set_reachable_nodes function of the DNSResponder."""
-        return self.dns_responder.set_reachable_nodes
+
+class TCPRequestHandler(socketserver.BaseRequestHandler):
+    """TCP request handler for DNS requests."""
+
+    def handle(self):
+        """Handle DNS request."""
+        log.debug("Received TCP packet (request=%s)", self.request)
+        data = self.request.recv(DNSConstants.TCP_SIZE_LIMIT)
+        expected_size = int.from_bytes(data[:2], byteorder="big")
+        if len(data) - 2 != expected_size:
+            log.warning(
+                "Received invalid TCP DNS packet (expected=%d, actual=%d)",
+                expected_size,
+                len(data),
+            )
+            return
+        response = DNSHandler.process(data[2:])
+        size, limit = len(response), DNSConstants.TCP_SIZE_LIMIT
+        assert size <= limit, f"Response too large (size={size}, limit={limit})"
+        log.debug("Sending TCP packet (to=%s, data=%s)", self.client_address, response)
+        size = len(response).to_bytes(2, byteorder="big")
+        self.request.sendall(size + response)
+
+
+class UDPRequestHandler(socketserver.BaseRequestHandler):
+    """UDP request handler for DNS requests."""
+
+    def handle(self):
+        """Handle DNS request."""
+        log.debug("Received UDP packet (request=%s)", self.request)
+        data = self.request[0].strip()
+        response = DNSHandler.process(data)
+        socket = self.request[1]
+        size, limit = len(response), DNSConstants.UDP_SIZE_LIMIT
+        assert size <= limit, f"Response too large (size={size}, limit={limit})"
+        log.debug("Sending UDP packet (to=%s, data=%s)", self.client_address, response)
+        socket.sendto(response, self.client_address)
