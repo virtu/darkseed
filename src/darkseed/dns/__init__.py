@@ -2,11 +2,10 @@
 
 from .custom_encoder import CustomNullEncoding
 from .record_builder import RecordBuilder
-from .server import DNSResponder, DNSServer
+from .server import DNSServer
 
 __all__ = [
     "RecordBuilder",
-    "DNSResponder",
     "DNSServer",
     "CustomNullEncoding",
 ]

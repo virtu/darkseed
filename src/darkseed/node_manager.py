@@ -3,25 +3,29 @@
 import bz2
 import csv
 import logging as log
+import random
 import threading
 import time
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Callable, ClassVar
+from typing import ClassVar
 
-from darkseed.node import Node
+from darkseed.node import NetworkType, Node
 
 
 @dataclass(unsafe_hash=True)
-class NodeLoader(threading.Thread):
-    """Class that provides reachable nodes data."""
+class NodeManager(threading.Thread):
+    """Class that manages node data, including:
+
+    1. Periodically checking for new node data
+    2. Providing node data to DNS and REST servers
+    """
 
     path: Path
-    dns_update_function: Callable
-    rest_update_function: Callable
     refresh: int = 600  # refresh frequency in seconds. default: ten minutes
+    NET_TO_NODES: ClassVar[dict[NetworkType, list[Node]]] = {}
     MAINNET_PORT: ClassVar[int] = 8333
 
     def __post_init__(self):
@@ -62,7 +66,7 @@ class NodeLoader(threading.Thread):
         for row in rows:
             counter["total"] += 1
             net, port = row["network"], int(row["port"])
-            if (net != "i2p" and port != NodeLoader.MAINNET_PORT) or (
+            if (net != "i2p" and port != NodeManager.MAINNET_PORT) or (
                 net == "i2p" and port != 0
             ):
                 if row["network"] == "i2p":
@@ -92,7 +96,28 @@ class NodeLoader(threading.Thread):
 
         data_file = self.get_latest_file()
         nodes = self.read_data_file(data_file)
-        self.dns_update_function(nodes)
-        log.debug("Updated reachable nodes in DNS server.")
-        self.rest_update_function(nodes)
-        log.debug("Updated reachable nodes in REST server.")
+
+        # use temporary dict to make switch from old to new data atomic, thus
+        # avoiding race conditions and the need for locks
+        net_to_nodes = {}
+        for net_type in NetworkType:
+            net_to_nodes[net_type] = [n for n in nodes if n.net_type == net_type]
+        NodeManager.NET_TO_NODES = net_to_nodes
+        log_str = f"Updated node pool: total={len(nodes)}, " + ", ".join(
+            f"{net}={len(nodes)}" for net, nodes in net_to_nodes.items()
+        )
+        log.info(log_str)
+
+    def get_random_addresses(self, net: NetworkType, num_requested: int):
+        """Return random addresses from node data."""
+        nodes = NodeManager.NET_TO_NODES[net]
+        addresses = [n.address for n in nodes]
+        num_available = len(nodes)
+        if num_available < num_requested:
+            log.warning(
+                "Insufficient data to provide addresses (requested=%d, available=%d): returning %d address(es).",
+                num_requested,
+                num_available,
+                num_available,
+            )
+        return random.sample(addresses, min(num_requested, num_available))

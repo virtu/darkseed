@@ -1,6 +1,7 @@
 # darkseed
 
-A DNS seeder for Bitcoin supporting all network types.
+A Bitcoin DNS seed prototype, supporting all network types and publishing results via
+DNS (UDP and TCP) and REST.
 
 ## Components
 
