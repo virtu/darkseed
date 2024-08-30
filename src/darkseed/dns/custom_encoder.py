@@ -41,11 +41,11 @@ class CustomNullEncodingRecord:
 
     type: int
     data: bytes
-    _address: str
+    address: str
 
     def __str__(self):
         """Include original address in string representations."""
-        return f"Record(type={self.type}, data={self.data.hex()}) was={self._address}"
+        return f"Record(type={self.type}, data={self.data.hex()}) was={self.address}"
 
     ONION_V3_ADDR: ClassVar[int] = 0
     I2P_ADDR: ClassVar[int] = 1 << 0

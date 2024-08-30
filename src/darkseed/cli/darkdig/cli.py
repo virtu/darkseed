@@ -13,8 +13,6 @@ import dns.rcode
 import dns.rdataclass
 import dns.rdatatype
 import dns.resolver
-import dns.reversename
-import dns.zone
 
 from darkseed.dns import CustomNullEncoding
 
@@ -23,7 +21,9 @@ from .config import get_config
 __version__ = importlib.metadata.version("darkseed")
 
 
-def lookup(domain: str, nameserver: str, port: int, qtype: str) -> dns.message.Message:
+def lookup(
+    domain: str, nameserver: str, port: int, qtype: str, use_tcp: bool
+) -> dns.message.Message:
     """Look up DNS records for a domain.
 
     Uses low-level dns.query instead of dns.resolver to allow "ANY" queries.
@@ -32,7 +32,8 @@ def lookup(domain: str, nameserver: str, port: int, qtype: str) -> dns.message.M
     query = dns.message.make_query(domain, qtype)
 
     try:
-        response = dns.query.udp(query, nameserver, port=port)
+        query_func = dns.query.tcp if use_tcp else dns.query.udp
+        response = query_func(query, nameserver, port=port)
         # print(response)
         return response
     except Exception as e:  # pylint: disable=broad-except
@@ -128,7 +129,7 @@ class PrettyPrinter:
         for pos, record in enumerate(encoding.records):
             print(";; ->>custom NULL-encoded address <<-", end=" ")
             print(f"record: {pos}", end=", ")
-            print(f"address: {record._address}")
+            print(f"address: {record.address}")
 
     @staticmethod
     def print_sections(response: dns.message.Message):
@@ -160,7 +161,7 @@ def main():
     print(f"{conf.domain}")
 
     lookup_start = time.time()
-    response = lookup(conf.domain, conf.nameserver, conf.port, conf.type)
+    response = lookup(conf.domain, conf.nameserver, conf.port, conf.type, conf.tcp)
     lookup_end = time.time()
 
     PrettyPrinter.print(response)
