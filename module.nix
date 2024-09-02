@@ -46,7 +46,7 @@ in
         type = types.nullOr types.str;
         default = null;
         example = "dnsseed.acme.com.";
-        description = mdDoc "DNS Zone managed by DNS server.";
+        description = mdDoc "Zone managed by DNS server.";
       };
     };
 
@@ -71,6 +71,7 @@ in
   config = mkIf cfg.enable {
     assertions = [
       { assertion = !(cfg.cjdns.enable && cfg.cjdns.address == null); message = "services.darkseed.cjdns.address must be set when services.darkseed.cjdns.enable is true."; }
+      { assertion = cfg.dns.zone != null; message = "services.darkseed.dns.zone must be set."; }
     ];
 
     networking.firewall = {
