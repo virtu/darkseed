@@ -21,7 +21,11 @@ class DNSConfig:
     @classmethod
     def parse(cls, args):
         """Create class instance from arguments."""
-        return cls(address=args.dns_address, port=args.dns_port, zone=args.dns_zone)
+        zone = args.dns_zone.lower()
+        if not zone.endswith("."):
+            zone += "."
+            print(f"Warning: Appended missing final dot to DNS zone: {zone}")
+        return cls(address=args.dns_address, port=args.dns_port, zone=zone)
 
 
 @dataclass
@@ -101,7 +105,7 @@ def parse_args():
         "--dns-zone",
         type=str,
         required=True,
-        help="Domain name for the DNS zone (e.g., dnsseed.acme.com)",
+        help="Domain name for the DNS zone (e.g., dnsseed.acme.com.)",
     )
 
     parser.add_argument(

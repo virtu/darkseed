@@ -70,7 +70,7 @@ class DNSHandler:
     def authoritative(cls, query: dns.message.Message) -> bool:
         """Check if configured to be authoritative for query."""
         question = query.question[0]
-        qdomain = question.name.to_text(omit_final_dot=False)
+        qdomain = question.name.to_text(omit_final_dot=False).lower()
         qtype = dns.rdatatype.to_text(question.rdtype)
         qclass = dns.rdataclass.to_text(question.rdclass)
         if not qdomain.endswith(cls._ZONE):
