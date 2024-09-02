@@ -131,7 +131,7 @@ in
       description = "TCP Forwarder on specific IPv6 address using socat";
       wantedBy = [ "multi-user.target" ];
       serviceConfig = {
-        ExecStart = "${pkgs.socat}/bin/socat TCP6-LISTEN:${cfg.dns.port},bind=${cfg.cjdns.address},fork,su=nobody TCP4:${cfg.dns.address}:${cfg.dns.port}";
+        ExecStart = "${pkgs.socat}/bin/socat TCP6-LISTEN:${toString cfg.dns.port},bind=${cfg.cjdns.address},fork,su=nobody TCP4:${cfg.dns.address}:${toString cfg.dns.port}";
         Restart = "always";
       };
     };
