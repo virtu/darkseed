@@ -42,6 +42,12 @@ in
         example = "192.168.0.1";
         description = mdDoc "Address used by DNS server.";
       };
+      zone = mkOption {
+        type = types.nullOr types.str;
+        default = null;
+        example = "dnsseed.acme.com.";
+        description = mdDoc "Zone managed by DNS server.";
+      };
     };
 
     rest = {
@@ -65,6 +71,7 @@ in
   config = mkIf cfg.enable {
     assertions = [
       { assertion = !(cfg.cjdns.enable && cfg.cjdns.address == null); message = "services.darkseed.cjdns.address must be set when services.darkseed.cjdns.enable is true."; }
+      { assertion = cfg.dns.zone != null; message = "services.darkseed.dns.zone must be set."; }
     ];
 
     networking.firewall = {
@@ -120,6 +127,7 @@ in
             --log-level ${cfg.logLevel} \
             --dns-port ${toString cfg.dns.port} \
             --dns-address ${cfg.dns.address} \
+            --dns-zone ${cfg.dns.zone} \
             --rest-port ${toString cfg.rest.port} \
             --rest-address ${cfg.rest.address} \
           '';
