@@ -42,6 +42,12 @@ in
         example = "192.168.0.1";
         description = mdDoc "Address used by DNS server.";
       };
+      zone = mkOption {
+        type = types.nullOr types.str;
+        default = null;
+        example = "dnsseed.acme.com.";
+        description = mdDoc "DNS Zone managed by DNS server.";
+      };
     };
 
     rest = {
