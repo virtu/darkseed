@@ -122,10 +122,20 @@ in
           listen = [{ addr = "[${cfg.cjdns.address}]"; port = cfg.rest.port; }];
           locations."/" = { proxyPass = "http://${cfg.rest.address}:${toString cfg.rest.port}"; };
         };
-        darkseed_dns = {
-          listen = [{ addr = "[${cfg.cjdns.address}]"; port = cfg.dns.port; }];
-          locations."/" = { proxyPass = "http://${cfg.dns.address}:${toString cfg.dns.port}"; };
-        };
+      };
+    };
+    environment.systemPackages = with pkgs; [
+      socat
+    ];
+    systemd.services.socat-tcp-forward = {
+      description = "TCP Forwarder on specific IPv6 address using socat";
+      wantedBy = [ "multi-user.target" ];
+      serviceConfig = {
+        ExecStart = "${pkgs.socat}/bin/socat TCP6-LISTEN:${cfg.dns.port},bind=${cfg.cjdns.address},fork,su=nobody TCP4:${cfg.dns.address}:${cfg.dns.port}";
+        Restart = "always";
+      };
+      install = {
+        wantedBy = [ "multi-user.target" ];
       };
     };
 
