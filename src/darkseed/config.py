@@ -11,14 +11,27 @@ __version__ = importlib.metadata.version(__package__ or __name__)
 
 
 @dataclass
+class DNSConfig:
+    """DNS Server configuration."""
+
+    address: str
+    port: int
+    zone: str
+
+    @classmethod
+    def parse(cls, args):
+        """Create class instance from arguments."""
+        return cls(address=args.dns_address, port=args.dns_port, zone=args.dns_zone)
+
+
+@dataclass
 class Config:
     """Configuration settings for the daemon."""
 
     version: str
     timestamp: datetime.datetime
     log_level: str
-    dns_address: str
-    dns_port: int
+    dns: DNSConfig
     rest_address: str
     rest_port: int
     crawler_path: Path
@@ -32,8 +45,7 @@ class Config:
             version=__version__,
             timestamp=args.timestamp,
             log_level=args.log_level.upper(),
-            dns_address=args.dns_address,
-            dns_port=args.dns_port,
+            dns=DNSConfig.parse(args),
             rest_address=args.rest_address,
             rest_port=args.rest_port,
             crawler_path=args.crawler_path,
@@ -83,6 +95,13 @@ def parse_args():
         type=int,
         default=53,
         help="UDP port used by the DNS server",
+    )
+
+    parser.add_argument(
+        "--dns-zone",
+        type=str,
+        required=True,
+        help="Domain name for the DNS zone (e.g., dnsseed.acme.com)",
     )
 
     parser.add_argument(

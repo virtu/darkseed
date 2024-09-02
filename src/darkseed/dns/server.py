@@ -4,13 +4,15 @@ import logging as log
 import socketserver
 import threading
 from dataclasses import dataclass
-from typing import ClassVar, List
+from typing import Callable, ClassVar, List
 
 import dns.message
+import dns.rcode
 import dns.rdataclass
 import dns.rdatatype
 import dns.rrset
 
+from darkseed.config import DNSConfig
 from darkseed.node import Address, NetworkType
 from darkseed.node_manager import NodeManager
 
@@ -34,6 +36,7 @@ class DNSHandler:
     """
 
     _NODE_MANAGER: ClassVar[NodeManager]
+    _ZONE: ClassVar[str]
     RDTYPE_TO_NETCOUNT: ClassVar[
         dict[dns.rdatatype.RdataType, dict[NetworkType, int]]
     ] = {
@@ -59,30 +62,54 @@ class DNSHandler:
         cls._NODE_MANAGER = node_manager
 
     @classmethod
+    def set_zone(cls, zone: str):
+        """Set the zone manager."""
+        cls._ZONE = zone
+
+    @classmethod
+    def authoritative(cls, query: dns.message.Message) -> bool:
+        """Check if configured to be authoritative for query."""
+        question = query.question[0]
+        qdomain = question.name.to_text(omit_final_dot=False)
+        qtype = dns.rdatatype.to_text(question.rdtype)
+        qclass = dns.rdataclass.to_text(question.rdclass)
+        if not qdomain.endswith(cls._ZONE):
+            log.warning(
+                "Received DNS request for unknown domain=%s (class=%s, type=%s)",
+                qdomain,
+                qclass,
+                qtype,
+            )
+            return False
+        log.debug(
+            "Received DNS request for domain=%s (class=%s, type=%s)",
+            qdomain,
+            qclass,
+            qtype,
+        )
+        return True
+
+    @classmethod
     def process(cls, data) -> bytes:
         """Process DNS request."""
         if not getattr(cls, "_NODE_MANAGER", None):
             raise RuntimeError(f"{cls.__name__}: Node manager not set")
+        if not getattr(cls, "_ZONE", None):
+            raise RuntimeError(f"{cls.__name__}: Zone not set")
 
         request = dns.message.from_wire(data)
         if len(request.question) != 1:
             log.error("Received DNS request with multiple questions: ignoring")
             return request.to_wire()
 
-        question = request.question[0]
-        qdomain = question.name.to_text(omit_final_dot=False)
-        qtype = dns.rdatatype.to_text(question.rdtype)
-        qclass = dns.rdataclass.to_text(question.rdclass)
-        log.debug(
-            "Received DNS request for domain=%s, class=%s, type=%s",
-            qdomain,
-            qclass,
-            qtype,
-        )
+        if not cls.authoritative(request):
+            response = dns.message.make_response(request)
+            response.set_rcode(dns.rcode.REFUSED)
+            return response.to_wire()
 
-        response = cls.create_response(request)
-        log.debug("Created DNS response (size=%d)", len(response))
-        return response
+        response_bytes = cls.create_response(request)
+        log.debug("Created DNS response (size=%d)", len(response_bytes))
+        return response_bytes
 
     @staticmethod
     def select_addresses(rdtype: dns.rdatatype.RdataType) -> List[Address]:
@@ -149,13 +176,13 @@ class DNSHandler:
 class DNSServer(threading.Thread):
     """DNS server."""
 
-    address: str
-    port: int
+    config: DNSConfig
     node_manager: NodeManager
 
     def __post_init__(self):
         super().__init__(name=self.__class__.__name__)
         DNSHandler.set_node_manager(self.node_manager)
+        DNSHandler.set_zone(self.config.zone)
 
     def run(self):
         """Start TCP and UDP DNS server threads."""
@@ -177,13 +204,18 @@ class DNSServer(threading.Thread):
 
     def run_server(
         self,
-        server_class: socketserver.BaseServer,
+        server_class: Callable,
         handler_class: socketserver.BaseRequestHandler,
     ):
         """Generic method to setup and run a DNS server, either UDP or TCP."""
-        server = server_class((self.address, self.port), handler_class)
+        server = server_class((self.config.address, self.config.port), handler_class)
         server_type = "UDP" if server_class == socketserver.UDPServer else "TCP"
-        log.info("Starting %s server on %s:%d", server_type, self.address, self.port)
+        log.info(
+            "Starting %s server on %s:%d",
+            server_type,
+            self.config.address,
+            self.config.port,
+        )
         server.serve_forever()
 
 
