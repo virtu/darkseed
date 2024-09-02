@@ -134,9 +134,6 @@ in
         ExecStart = "${pkgs.socat}/bin/socat TCP6-LISTEN:${cfg.dns.port},bind=${cfg.cjdns.address},fork,su=nobody TCP4:${cfg.dns.address}:${cfg.dns.port}";
         Restart = "always";
       };
-      install = {
-        wantedBy = [ "multi-user.target" ];
-      };
     };
 
     systemd.services.darkseed = {
