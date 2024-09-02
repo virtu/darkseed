@@ -127,6 +127,7 @@ in
             --log-level ${cfg.logLevel} \
             --dns-port ${toString cfg.dns.port} \
             --dns-address ${cfg.dns.address} \
+            --dns-zone ${cfg.dns.zone} \
             --rest-port ${toString cfg.rest.port} \
             --rest-address ${cfg.rest.address} \
           '';
