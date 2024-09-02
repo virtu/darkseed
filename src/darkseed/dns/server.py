@@ -67,27 +67,11 @@ class DNSHandler:
         cls._ZONE = zone
 
     @classmethod
-    def authoritative(cls, query: dns.message.Message) -> bool:
-        """Check if configured to be authoritative for query."""
-        question = query.question[0]
-        qdomain = question.name.to_text(omit_final_dot=False).lower()
-        qtype = dns.rdatatype.to_text(question.rdtype)
-        qclass = dns.rdataclass.to_text(question.rdclass)
-        if not qdomain.endswith(cls._ZONE):
-            log.warning(
-                "Received DNS request for unknown domain=%s (class=%s, type=%s)",
-                qdomain,
-                qclass,
-                qtype,
-            )
-            return False
-        log.debug(
-            "Received DNS request for domain=%s (class=%s, type=%s)",
-            qdomain,
-            qclass,
-            qtype,
-        )
-        return True
+    def refuse(cls, request: dns.message.Message) -> bytes:
+        """Create serialized DNS reply indicating the request was refused."""
+        response = dns.message.make_response(request)
+        response.set_rcode(dns.rcode.REFUSED)
+        return response.to_wire()
 
     @classmethod
     def process(cls, data) -> bytes:
@@ -99,14 +83,21 @@ class DNSHandler:
 
         request = dns.message.from_wire(data)
         if len(request.question) != 1:
-            log.error("Received DNS request with multiple questions: ignoring")
-            return request.to_wire()
+            log.warning("Refusing request with more than one question")
+            return cls.refuse(request)
 
-        if not cls.authoritative(request):
-            response = dns.message.make_response(request)
-            response.set_rcode(dns.rcode.REFUSED)
-            return response.to_wire()
+        question = request.question[0]
+        qdomain = question.name.to_text(omit_final_dot=False).lower()
+        if qdomain != cls._ZONE:
+            log.warning("Refusing request for unknown zone (name=%s)", qdomain)
+            return cls.refuse(request)
 
+        log.debug(
+            "Received DNS request for domain=%s (class=%s, type=%s)",
+            qdomain,
+            dns.rdatatype.to_text(question.rdtype),
+            dns.rdataclass.to_text(question.rdclass),
+        )
         response_bytes = cls.create_response(request)
         log.debug("Created DNS response (size=%d)", len(response_bytes))
         return response_bytes
