@@ -76,7 +76,7 @@ in
 
     networking.firewall = {
       allowedUDPPorts = [ cfg.dns.port ];
-      allowedTCPPorts = [ cfg.rest.port ];
+      allowedTCPPorts = [ cfg.dns.port cfg.rest.port ];
     };
 
     services.tor = mkIf cfg.tor.enable {
@@ -95,12 +95,19 @@ in
 
     services.i2pd = mkIf cfg.i2p.enable {
       enable = true;
-      inTunnels.darkseed = {
+      inTunnels.darkseed_rest = {
         enable = true;
         inPort = cfg.rest.port;
         destination = cfg.rest.address;
         address = cfg.rest.address;
         port = cfg.rest.port;
+      };
+      inTunnels.darkseed_dns = {
+        enable = true;
+        inPort = cfg.dns.port;
+        destination = cfg.dns.address;
+        address = cfg.dns.address;
+        port = cfg.dns.port;
       };
     };
 
@@ -111,9 +118,13 @@ in
       recommendedProxySettings = true;
       recommendedTlsSettings = true;
       virtualHosts = {
-        darkseed = {
+        darkseed_rest = {
           listen = [{ addr = "[${cfg.cjdns.address}]"; port = cfg.rest.port; }];
           locations."/" = { proxyPass = "http://${cfg.rest.address}:${toString cfg.rest.port}"; };
+        };
+        darkseed_dns = {
+          listen = [{ addr = "[${cfg.cjdns.address}]"; port = cfg.dns.port; }];
+          locations."/" = { proxyPass = "http://${cfg.dns.address}:${toString cfg.dns.port}"; };
         };
       };
     };
