@@ -84,6 +84,7 @@ in
 
     # Make DNS and REST servers reachable via TOR
     services.tor = mkIf cfg.tor.enable {
+      client.enable = mkIf cfg.client.enable true;
       torsocks.enable = mkIf cfg.client.enable true;
       enable = true;
       enableGeoIP = false;
