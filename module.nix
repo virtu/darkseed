@@ -9,7 +9,7 @@ in
 {
   options.services.darkseed = {
     enable = mkEnableOption "darkseed";
-
+    client.enable = mkEnableOption "client functionality (darkdig)";
     tor.enable = mkEnableOption "darkseed via TOR";
     i2p.enable = mkEnableOption "darkseed via I2P";
     cjdns = {
@@ -70,12 +70,13 @@ in
 
   config = mkIf cfg.enable {
     assertions = [
+      { assertion = !(cfg.client.enable && (!cfg.tor.enable || !cfg.i2p.enable)); message = "services.darkseed.client.enable requires services.darkseed.tor and services.darkseed.i2p to be enabled."; }
       { assertion = !(cfg.cjdns.enable && cfg.cjdns.address == null); message = "services.darkseed.cjdns.address must be set when services.darkseed.cjdns.enable is true."; }
       { assertion = cfg.dns.zone != null; message = "services.darkseed.dns.zone must be set."; }
     ];
 
-    # add darkdig cli tool
-    environment.systemPackages = [ flake.packages.${pkgs.stdenv.hostPlatform.system}.darkdig ];
+    environment.systemPackages = mkIf cfg.client.enable [ flake.packages.${pkgs.stdenv.hostPlatform.system}.darkdig ];
+
 
     networking.firewall = {
       allowedUDPPorts = [ cfg.dns.port ];
@@ -84,6 +85,8 @@ in
 
     # Make DNS and REST servers reachable via TOR
     services.tor = mkIf cfg.tor.enable {
+      client.enable = mkIf cfg.client.enable true;
+      torsocks.enable = mkIf cfg.client.enable true;
       enable = true;
       enableGeoIP = false;
       relay.onionServices = {
@@ -99,6 +102,7 @@ in
 
     # Make DNS and REST servers reachable via I2P
     services.i2pd = mkIf cfg.i2p.enable {
+      proto.socksProxy.enable = mkIf cfg.client.enable true;
       enable = true;
       inTunnels = {
         darkseed-dns = {
