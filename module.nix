@@ -74,6 +74,9 @@ in
       { assertion = cfg.dns.zone != null; message = "services.darkseed.dns.zone must be set."; }
     ];
 
+    # add darkdig cli tool
+    environment.systemPackages = [ flake.packages.${pkgs.stdenv.hostPlatform.system}.darkdig ];
+
     networking.firewall = {
       allowedUDPPorts = [ cfg.dns.port ];
       allowedTCPPorts = [ cfg.rest.port ];
