@@ -82,6 +82,7 @@ in
       allowedTCPPorts = [ cfg.rest.port ];
     };
 
+    # Make DNS and REST servers reachable via TOR
     services.tor = mkIf cfg.tor.enable {
       enable = true;
       enableGeoIP = false;
@@ -96,17 +97,28 @@ in
       };
     };
 
+    # Make DNS and REST servers reachable via I2P
     services.i2pd = mkIf cfg.i2p.enable {
       enable = true;
-      inTunnels.darkseed = {
-        enable = true;
-        inPort = cfg.rest.port;
-        destination = cfg.rest.address;
-        address = cfg.rest.address;
-        port = cfg.rest.port;
+      inTunnels = {
+        darkseed-dns = {
+          enable = true;
+          inPort = cfg.dns.port;
+          destination = cfg.dns.address;
+          address = cfg.dns.address;
+          port = cfg.dns.port;
+        };
+        darkseed-rest = {
+          enable = true;
+          inPort = cfg.rest.port;
+          destination = cfg.rest.address;
+          address = cfg.rest.address;
+          port = cfg.rest.port;
+        };
       };
     };
 
+    # Make REST server reachable via CJDNS
     services.nginx = mkIf cfg.cjdns.enable {
       enable = true;
       recommendedGzipSettings = true;
