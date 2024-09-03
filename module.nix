@@ -70,6 +70,7 @@ in
 
   config = mkIf cfg.enable {
     assertions = [
+      { assertion = !(cfg.client.enable && (!cfg.tor.enable || !cfg.i2p.enable)); message = "services.darkseed.client.enable requires services.darkseed.tor and services.darkseed.i2p to be enabled."; }
       { assertion = !(cfg.cjdns.enable && cfg.cjdns.address == null); message = "services.darkseed.cjdns.address must be set when services.darkseed.cjdns.enable is true."; }
       { assertion = cfg.dns.zone != null; message = "services.darkseed.dns.zone must be set."; }
     ];
