@@ -21,6 +21,11 @@
       packages = {
         darkseed = mkPoetryApplication {
           projectDir = ./.;
+          mainProgram = "darkseed";
+        };
+        darkdig = mkPoetryApplication {
+          projectDir = ./.;
+          mainProgram = "darkdig";
         };
         default = self.packages.${system}.darkseed;
       };
