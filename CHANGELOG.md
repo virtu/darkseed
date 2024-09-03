@@ -7,11 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.4.0] - 2024-09-03
 
-- Support DNS (TCP) via I2P
-  - Create I2P tunnels for darknet TCP DNS
-  - Allow darkdig to use a socks5 proxy
-    - Add `pysocks` as dependency
-    - Add `--proxy` command-line argument to darkdig a proxy can be specified
+- Add `darkdig` to PATH when using NixOS module
 
 ## [0.3.0] - 2024-09-03
 
