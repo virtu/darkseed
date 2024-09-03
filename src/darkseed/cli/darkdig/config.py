@@ -1,7 +1,9 @@
 """Configuration options for darkdig CLI tool."""
 
 import argparse
+import sys
 from dataclasses import asdict, dataclass
+from os import EX_USAGE
 
 
 @dataclass
@@ -12,6 +14,7 @@ class Config:
     domain: str
     nameserver: str
     port: int
+    proxy: str
     type: str
     tcp: bool
 
@@ -19,11 +22,16 @@ class Config:
     def parse(cls, args):
         """Create class instance from arguments."""
 
+        if args.socks5_proxy and not args.tcp:
+            print("Using --socks5-proxy requires --tcp to be set. Exiting.")
+            sys.exit(EX_USAGE)
+
         return cls(
             verbose=args.verbose,
             domain=args.domain,
             nameserver=args.nameserver,
             port=args.port,
+            proxy=args.socks5_proxy,
             type=args.type,
             tcp=args.tcp,
         )
@@ -60,6 +68,13 @@ def parse_args():
         type=int,
         default=53,
         help="Nameserver port to use [default: 53]",
+    )
+
+    parser.add_argument(
+        "--socks5-proxy",
+        type=str,
+        default="",
+        help="Proxy to use for DNS queries (e.g., localhost:9050) [default: Don't use proxy]",
     )
 
     parser.add_argument(
