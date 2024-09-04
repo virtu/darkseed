@@ -53,15 +53,15 @@ in
     assertions = [
       { assertion = !(cfg.client.enable && (!cfg.tor.enable || !cfg.i2p.enable)); message = "services.darkseed.client.enable requires services.darkseed.tor and services.darkseed.i2p to be enabled."; }
       { assertion = !(cfg.cjdns.enable && cfg.cjdns.address == null); message = "services.darkseed.cjdns.address must be set when services.darkseed.cjdns.enable is true."; }
-      { assertion = cfg.dns.zone != null; message = "services.darkseed.dns.zone must be set."; }
+      { assertion = cfg.zone != null; message = "services.darkseed.zone must be set."; }
     ];
 
     environment.systemPackages = lib.optional cfg.cjdns.enable pkgs.socat ++
       lib.optional cfg.client.enable flake.packages.${pkgs.stdenv.hostPlatform.system}.darkdig;
 
     networking.firewall = {
-      allowedUDPPorts = [ cfg.dns.port ];
-      allowedTCPPorts = [ cfg.dns.port ];
+      allowedUDPPorts = [ cfg.port ];
+      allowedTCPPorts = [ cfg.port ];
     };
 
     services.fail2ban = {
@@ -98,7 +98,7 @@ in
         darkseed = {
           version = 3;
           map = [
-            { port = cfg.dns.port; target = { addr = "${cfg.dns.address}"; port = cfg.dns.port; }; }
+            { port = cfg.port; target = { addr = "${cfg.address}"; port = cfg.port; }; }
           ];
         };
       };
@@ -110,10 +110,10 @@ in
       enable = true;
       inTunnels.darkseed-dns = {
         enable = true;
-        inPort = cfg.dns.port;
-        destination = cfg.dns.address;
-        address = cfg.dns.address;
-        port = cfg.dns.port;
+        inPort = cfg.port;
+        destination = cfg.address;
+        address = cfg.address;
+        port = cfg.port;
       };
     };
 
@@ -122,7 +122,7 @@ in
       description = "Forward TCP UDP to CJDNS using socat";
       wantedBy = [ "multi-user.target" ];
       serviceConfig = {
-        ExecStart = "${pkgs.socat}/bin/socat UDP6-LISTEN:${toString cfg.dns.port},bind='[${cfg.cjdns.address}]',fork,su=nobody UDP4:${cfg.dns.address}:${toString cfg.dns.port}";
+        ExecStart = "${pkgs.socat}/bin/socat UDP6-LISTEN:${toString cfg.port},bind='[${cfg.cjdns.address}]',fork,su=nobody UDP4:${cfg.address}:${toString cfg.port}";
         Restart = "always";
       };
     };
