@@ -83,17 +83,27 @@ class DNSHandler:
 
         request = dns.message.from_wire(data)
         if len(request.question) != 1:
-            log.warning("Refusing request with more than one question")
+            log.warning(
+                "Refusing DNS query with more than one question: from=%s, size=%d, questions=%d",
+                peer_info,
+                len(data),
+                len(request.question),
+            )
             return cls.refuse(request)
 
         question = request.question[0]
         qdomain = question.name.to_text(omit_final_dot=False).lower()
         if qdomain != cls._ZONE:
-            log.warning("Refusing request for unknown zone (name=%s)", qdomain)
+            log.warning(
+                "Refusing DNS query for unknown zone: from=%s, size=%d, name=%s",
+                peer_info,
+                len(data),
+                qdomain,
+            )
             return cls.refuse(request)
 
         log.info(
-            "Received DNS query: from=%s, size=%s, domain=%s, class=%s, type=%s",
+            "Received DNS query: from=%s, size=%d, domain=%s, class=%s, type=%s",
             peer_info,
             len(data),
             qdomain,
