@@ -25,6 +25,7 @@ class NodeManager(threading.Thread):
 
     path: Path
     refresh: int = 600  # refresh frequency in seconds. default: ten minutes
+    _previous_data_file: Path = Path()
     NET_TO_NODES: ClassVar[dict[NetworkType, list[Node]]] = {}
     MAINNET_PORT: ClassVar[int] = 8333
 
@@ -95,6 +96,12 @@ class NodeManager(threading.Thread):
         """Get latest reachable nodes data."""
 
         data_file = self.get_latest_file()
+        if data_file == self._previous_data_file:
+            log.info(
+                "No new crawler data found. Continuing to use data from %s",
+                data_file.name,
+            )
+        self._previous_data_file = data_file
         nodes = self.read_data_file(data_file)
 
         # use temporary dict to make switch from old to new data atomic, thus
