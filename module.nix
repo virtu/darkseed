@@ -83,6 +83,30 @@ in
       allowedTCPPorts = [ cfg.rest.port cfg.dns.port ];
     };
 
+    services.fail2ban = {
+      enable = true;
+      jails = {
+        darkseed = {
+          settings = {
+            backend = "systemd";
+            journalmatch = "_SYSTEMD_UNIT=darkseed.service + _COMM=darkseed";
+            filter = "darkseed";
+            # rate limit to five requests per minute; ban for one hour, both udp and tcp
+            maxretry = 5;
+            findtime = 60;
+            bantime = 3600;
+            protocol = "tcp,udp";
+          };
+        };
+      };
+    };
+    environment.etc."fail2ban/filter.d/darkseed.conf".text = /* ini */ ''
+      [Definition]
+      # match all lines containing from=<address>, except from debug log
+      failregex = ^.* from=<HOST>.*$
+      ignoreregex = "^.* DEBUG .*$";
+    '';
+
     # Make DNS and REST servers reachable via TOR
     services.tor = mkIf cfg.tor.enable {
       client.enable = mkIf cfg.client.enable true;
