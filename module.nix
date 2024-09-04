@@ -29,43 +29,24 @@ in
       description = mdDoc "Log verbosity for console.";
     };
 
-    dns = {
-      port = mkOption {
-        type = types.int;
-        default = 53;
-        example = 8053;
-        description = mdDoc "Port used by DNS server.";
-      };
-      address = mkOption {
-        type = types.str;
-        default = "127.0.0.1";
-        example = "192.168.0.1";
-        description = mdDoc "Address used by DNS server.";
-      };
-      zone = mkOption {
-        type = types.nullOr types.str;
-        default = null;
-        example = "dnsseed.acme.com.";
-        description = mdDoc "Zone managed by DNS server.";
-      };
+    port = mkOption {
+      type = types.int;
+      default = 53;
+      example = 8053;
+      description = mdDoc "Port used by DNS server.";
     };
-
-    rest = {
-      port = mkOption {
-        type = types.int;
-        default = 80;
-        example = 8080;
-        description = mdDoc "Port used by REST server.";
-      };
-      address = mkOption {
-        type = types.str;
-        default = "127.0.0.1";
-        example = "192.168.0.1";
-        description = mdDoc "Address used by REST server.";
-      };
+    address = mkOption {
+      type = types.str;
+      default = "127.0.0.1";
+      example = "192.168.0.1";
+      description = mdDoc "Address used by DNS server.";
     };
-
-
+    zone = mkOption {
+      type = types.nullOr types.str;
+      default = null;
+      example = "dnsseed.acme.com.";
+      description = mdDoc "Zone managed by DNS server.";
+    };
   };
 
   config = mkIf cfg.enable {
@@ -80,7 +61,7 @@ in
 
     networking.firewall = {
       allowedUDPPorts = [ cfg.dns.port ];
-      allowedTCPPorts = [ cfg.rest.port cfg.dns.port ];
+      allowedTCPPorts = [ cfg.dns.port ];
     };
 
     services.fail2ban = {
@@ -107,7 +88,7 @@ in
       ignoreregex = "^.* DEBUG .*$";
     '';
 
-    # Make DNS and REST servers reachable via TOR
+    # Make DNS server reachable via TOR
     services.tor = mkIf cfg.tor.enable {
       client.enable = mkIf cfg.client.enable true;
       torsocks.enable = mkIf cfg.client.enable true;
@@ -118,31 +99,21 @@ in
           version = 3;
           map = [
             { port = cfg.dns.port; target = { addr = "${cfg.dns.address}"; port = cfg.dns.port; }; }
-            { port = cfg.rest.port; target = { addr = "${cfg.rest.address}"; port = cfg.rest.port; }; }
           ];
         };
       };
     };
 
-    # Make DNS and REST servers reachable via I2P
+    # Make DNS server reachable via I2P
     services.i2pd = mkIf cfg.i2p.enable {
       proto.socksProxy.enable = mkIf cfg.client.enable true;
       enable = true;
-      inTunnels = {
-        darkseed-dns = {
-          enable = true;
-          inPort = cfg.dns.port;
-          destination = cfg.dns.address;
-          address = cfg.dns.address;
-          port = cfg.dns.port;
-        };
-        darkseed-rest = {
-          enable = true;
-          inPort = cfg.rest.port;
-          destination = cfg.rest.address;
-          address = cfg.rest.address;
-          port = cfg.rest.port;
-        };
+      inTunnels.darkseed-dns = {
+        enable = true;
+        inPort = cfg.dns.port;
+        destination = cfg.dns.address;
+        address = cfg.dns.address;
+        port = cfg.dns.port;
       };
     };
 
@@ -156,22 +127,6 @@ in
       };
     };
 
-
-    # Make REST server reachable via CJDNS
-    services.nginx = mkIf cfg.cjdns.enable {
-      enable = true;
-      recommendedGzipSettings = true;
-      recommendedOptimisation = true;
-      recommendedProxySettings = true;
-      recommendedTlsSettings = true;
-      virtualHosts = {
-        darkseed = {
-          listen = [{ addr = "[${cfg.cjdns.address}]"; port = cfg.rest.port; }];
-          locations."/" = { proxyPass = "http://${cfg.rest.address}:${toString cfg.rest.port}"; };
-        };
-      };
-    };
-
     systemd.services.darkseed = {
       description = "darkseed";
       after = [ "network-online.target" ];
@@ -179,11 +134,9 @@ in
       serviceConfig = {
         ExecStart = ''${darkseed}/bin/darkseed \
             --log-level ${cfg.logLevel} \
-            --dns-port ${toString cfg.dns.port} \
-            --dns-address ${cfg.dns.address} \
-            --dns-zone ${cfg.dns.zone} \
-            --rest-port ${toString cfg.rest.port} \
-            --rest-address ${cfg.rest.address} \
+            --address ${cfg.address} \
+            --port ${toString cfg.port} \
+            --zone ${cfg.zone} \
           '';
         AmbientCapabilities = "CAP_NET_BIND_SERVICE";
         DynamicUser = true;

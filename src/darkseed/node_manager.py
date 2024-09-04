@@ -20,7 +20,7 @@ class NodeManager(threading.Thread):
     """Class that manages node data, including:
 
     1. Periodically checking for new node data
-    2. Providing node data to DNS and REST servers
+    2. Providing node data to DNS server
     """
 
     path: Path

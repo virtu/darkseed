@@ -21,11 +21,11 @@ class DNSConfig:
     @classmethod
     def parse(cls, args):
         """Create class instance from arguments."""
-        zone = args.dns_zone.lower()
+        zone = args.zone.lower()
         if not zone.endswith("."):
             zone += "."
             print(f"Warning: Appended missing final dot to DNS zone: {zone}")
-        return cls(address=args.dns_address, port=args.dns_port, zone=zone)
+        return cls(address=args.address, port=args.port, zone=zone)
 
 
 @dataclass
@@ -36,8 +36,6 @@ class Config:
     timestamp: datetime.datetime
     log_level: str
     dns: DNSConfig
-    rest_address: str
-    rest_port: int
     crawler_path: Path
     ttl: int
 
@@ -50,8 +48,6 @@ class Config:
             timestamp=args.timestamp,
             log_level=args.log_level.upper(),
             dns=DNSConfig.parse(args),
-            rest_address=args.rest_address,
-            rest_port=args.rest_port,
             crawler_path=args.crawler_path,
             ttl=args.ttl,
         )
@@ -88,38 +84,24 @@ def parse_args():
     )
 
     parser.add_argument(
-        "--dns-address",
+        "--address",
         type=str,
         default="127.0.0.1",
         help="IP address used by the DNS server",
     )
 
     parser.add_argument(
-        "--dns-port",
+        "--port",
         type=int,
         default=53,
         help="TCP and UDP ports used by the DNS server",
     )
 
     parser.add_argument(
-        "--dns-zone",
+        "--zone",
         type=str,
         required=True,
         help="Domain name for the DNS zone (e.g., dnsseed.acme.com.)",
-    )
-
-    parser.add_argument(
-        "--rest-address",
-        type=str,
-        default="127.0.0.1",
-        help="IP address used by the REST server",
-    )
-
-    parser.add_argument(
-        "--rest-port",
-        type=int,
-        default=80,
-        help="TCP port used by the REST server",
     )
 
     parser.add_argument(
