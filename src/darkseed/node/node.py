@@ -2,7 +2,7 @@
 
 from functools import cached_property
 
-from .address import Address
+from darkseed.address import Address
 
 
 class Node:

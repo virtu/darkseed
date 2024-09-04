@@ -14,7 +14,7 @@ import dns.rdatatype
 import dns.resolver
 import socks
 
-from darkseed.dns import CustomNullEncoding, DNSConstants
+from darkseed.dns import DNSConstants, NullRecordCodec
 
 from .config import Config, get_config
 
@@ -170,16 +170,17 @@ class PrettyPrinter:
         )
 
         data_base64 = base64.b64encode(rdata.to_wire()).decode("ascii").rstrip("=")
-        encoding = CustomNullEncoding.from_bytes(rdata.to_wire())
+        addresses = NullRecordCodec.decode(rdata.to_wire())
         print(";; ->>custom NULL encoding<<-", end=" ")
         print(f"size: {len(rdata.to_wire())}", end=", ")
-        print(f"records: {encoding.num_records}", end=", ")
+        print(f"records: {len(addresses)}", end=", ")
         print(f"data (base64): {data_base64}")
 
-        for pos, record in enumerate(encoding.records):
+        for pos, address in enumerate(addresses):
             print(";; ->>custom NULL-encoded address <<-", end=" ")
             print(f"record: {pos}", end=", ")
-            print(f"address: {record.address}")
+            print(f"net_type: {address.net_type}", end=", ")
+            print(f"address: {address.address}")
 
     @staticmethod
     def print_sections(response: dns.message.Message):

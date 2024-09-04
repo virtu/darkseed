@@ -12,12 +12,12 @@ import dns.rdataclass
 import dns.rdatatype
 import dns.rrset
 
+from darkseed.address import Address, NetworkType
 from darkseed.config import DNSConfig
-from darkseed.node import Address, NetworkType
 from darkseed.node_manager import NodeManager
 
-from .custom_encoder import MultiAddressCodec
-from .record_builder import RecordBuilder
+from .null_record import NullRecord
+from .regular_records import RegularRecords
 
 
 @dataclass
@@ -161,14 +161,14 @@ class DNSHandler:
 
         domain = response.question[0].name.to_text(omit_final_dot=False)
 
-        clearnet_addrs = [a for a in addresses if a.ipv4 or a.ipv6 or a.cjdns]
+        clearnet_addrs = [a for a in addresses if a.ipv4 or a.ipv6]
         for address in clearnet_addrs:
-            record = RecordBuilder.build_record(address, domain)
+            record = RegularRecords.build_record(address, domain)
             response.answer.append(record)
 
-        darknet_addrs = [a for a in addresses if not (a.ipv4 or a.ipv6 or a.cjdns)]
+        darknet_addrs = [a for a in addresses if not (a.ipv4 or a.ipv6)]
         if darknet_addrs:
-            record = MultiAddressCodec.build_record(darknet_addrs, domain)
+            record = NullRecord.build_record(darknet_addrs, domain)
             response.answer.append(record)
 
         size = len(response.to_wire())
