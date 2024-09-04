@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "darkseed"
-version = "0.9.1"
+version = "0.10.0"
 description = "Bitcoin DNS seeder with support for all network types"
 authors = ["virtu <virtu@cryptic.to>"]
 license = "AGPLv3"
@@ -9,7 +9,6 @@ readme = "README.md"
 [tool.poetry.dependencies]
 python = ">=3.11"
 dnspython = "^2.6.1"
-flask = "^3.0.3"
 pysocks = "^1.7.1"
 
 [build-system]

@@ -6,7 +6,6 @@ import time
 from darkseed.config import get_config
 from darkseed.dns import DNSServer
 from darkseed.node_manager import NodeManager
-from darkseed.rest import RESTServer
 
 
 def main():
@@ -26,9 +25,6 @@ def main():
 
     dns_server = DNSServer(conf.dns, node_manager)
     dns_server.start()
-
-    rest_server = RESTServer(conf.rest_address, conf.rest_port, node_manager)
-    rest_server.start()
 
 
 if __name__ == "__main__":
