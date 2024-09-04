@@ -101,6 +101,7 @@ class NodeManager(threading.Thread):
                 "No new crawler data found. Continuing to use data from %s",
                 data_file.name,
             )
+            return
         self._previous_data_file = data_file
         nodes = self.read_data_file(data_file)
 
