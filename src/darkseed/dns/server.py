@@ -4,7 +4,7 @@ import logging as log
 import socketserver
 import threading
 from dataclasses import dataclass
-from typing import Callable, ClassVar, List
+from typing import ClassVar, List
 
 import dns.message
 import dns.rcode
@@ -177,37 +177,21 @@ class DNSServer(threading.Thread):
 
     def run(self):
         """Start TCP and UDP DNS server threads."""
-        udp_thread = threading.Thread(
-            target=self.run_server,
-            args=(socketserver.UDPServer, UDPRequestHandler),
-            name="UDP Server",
-        )
-        udp_thread.start()
-        tcp_thread = threading.Thread(
-            target=self.run_server,
-            args=(
-                socketserver.TCPServer,
-                TCPRequestHandler,
-            ),
-            name="TCP Server",
-        )
-        tcp_thread.start()
 
-    def run_server(
-        self,
-        server_class: Callable,
-        handler_class: socketserver.BaseRequestHandler,
-    ):
-        """Generic method to setup and run a DNS server, either UDP or TCP."""
-        server = server_class((self.config.address, self.config.port), handler_class)
-        server_type = "UDP" if server_class == socketserver.UDPServer else "TCP"
-        log.info(
-            "Starting %s server on %s:%d",
-            server_type,
-            self.config.address,
-            self.config.port,
-        )
-        server.serve_forever()
+        def _start_server(address, port, protocol):
+            """Start DNS server."""
+            if protocol == "TCP":
+                server = socketserver.TCPServer((address, port), TCPRequestHandler)
+            elif protocol == "UDP":
+                server = socketserver.UDPServer((address, port), UDPRequestHandler)
+            else:
+                raise ValueError(f"Unsupported protocol {protocol}")
+            server_thread = threading.Thread(target=server.serve_forever)
+            server_thread.start()
+            log.info("Started DNS server on %s:%d [%s]", address, port, protocol)
+
+        for proto in ("TCP", "UDP"):
+            _start_server(self.config.address, self.config.port, proto)
 
 
 class TCPRequestHandler(socketserver.BaseRequestHandler):

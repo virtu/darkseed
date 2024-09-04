@@ -98,7 +98,7 @@ def parse_args():
         "--dns-port",
         type=int,
         default=53,
-        help="UDP port used by the DNS server",
+        help="TCP and UDP ports used by the DNS server",
     )
 
     parser.add_argument(
