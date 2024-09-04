@@ -75,12 +75,12 @@ in
       { assertion = cfg.dns.zone != null; message = "services.darkseed.dns.zone must be set."; }
     ];
 
-    environment.systemPackages = mkIf cfg.client.enable [ flake.packages.${pkgs.stdenv.hostPlatform.system}.darkdig ];
-
+    environment.systemPackages = lib.optional cfg.cjdns.enable pkgs.socat ++
+      lib.optional cfg.client.enable flake.packages.${pkgs.stdenv.hostPlatform.system}.darkdig;
 
     networking.firewall = {
       allowedUDPPorts = [ cfg.dns.port ];
-      allowedTCPPorts = [ cfg.rest.port ];
+      allowedTCPPorts = [ cfg.rest.port cfg.dns.port ];
     };
 
     # Make DNS and REST servers reachable via TOR
@@ -121,6 +121,17 @@ in
         };
       };
     };
+
+    # Make DNS server reachable via CJDNS
+    systemd.services.darkdig-cjdns-udp-socat-proxy = mkIf cfg.cjdns.enable {
+      description = "Forward TCP UDP to CJDNS using socat";
+      wantedBy = [ "multi-user.target" ];
+      serviceConfig = {
+        ExecStart = "${pkgs.socat}/bin/socat UDP6-LISTEN:${toString cfg.dns.port},bind='[${cfg.cjdns.address}]',fork,su=nobody UDP4:${cfg.dns.address}:${toString cfg.dns.port}";
+        Restart = "always";
+      };
+    };
+
 
     # Make REST server reachable via CJDNS
     services.nginx = mkIf cfg.cjdns.enable {
