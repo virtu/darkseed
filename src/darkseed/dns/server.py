@@ -4,7 +4,7 @@ import logging as log
 import socketserver
 import threading
 from dataclasses import dataclass
-from typing import ClassVar, List
+from typing import ClassVar, List, Tuple
 
 import dns.message
 import dns.rcode
@@ -74,7 +74,7 @@ class DNSHandler:
         return response.to_wire()
 
     @classmethod
-    def process(cls, data) -> bytes:
+    def process(cls, data: bytes, peer_info: str) -> bytes:
         """Process DNS request."""
         if not getattr(cls, "_NODE_MANAGER", None):
             raise RuntimeError(f"{cls.__name__}: Node manager not set")
@@ -92,14 +92,21 @@ class DNSHandler:
             log.warning("Refusing request for unknown zone (name=%s)", qdomain)
             return cls.refuse(request)
 
-        log.debug(
-            "Received DNS request for domain=%s (class=%s, type=%s)",
+        log.info(
+            "Received DNS query: from=%s, size=%s, domain=%s, class=%s, type=%s",
+            peer_info,
+            len(data),
             qdomain,
             dns.rdatatype.to_text(question.rdtype),
             dns.rdataclass.to_text(question.rdclass),
         )
-        response_bytes = cls.create_response(request)
-        log.debug("Created DNS response (size=%d)", len(response_bytes))
+        response_bytes, response_records = cls.create_response(request)
+        log.info(
+            "Sending reply: to=%s, size=%d, records=%d",
+            peer_info,
+            len(response_bytes),
+            response_records,
+        )
         return response_bytes
 
     @staticmethod
@@ -117,20 +124,20 @@ class DNSHandler:
         return addresses
 
     @staticmethod
-    def create_response(request: dns.message.Message) -> bytes:
+    def create_response(request: dns.message.Message) -> Tuple[bytes, int]:
         """Create DNS response."""
         response = dns.message.make_response(request)
         response.use_edns(False)
         question = request.question[0]
         addresses = DNSHandler.select_addresses(question.rdtype)
         DNSHandler.add_records_to_response(response, addresses)
-        log.info(
+        log.debug(
             "Created response (size=%dB, records=%d)",
             len(response.to_wire()),
             len(addresses),
         )
         log.debug("Response=%s", response.to_wire().hex())
-        return response.to_wire()
+        return response.to_wire(), len(addresses)
 
     @staticmethod
     def add_records_to_response(
@@ -209,7 +216,8 @@ class TCPRequestHandler(socketserver.BaseRequestHandler):
                 len(data),
             )
             return
-        response = DNSHandler.process(data[2:])
+        peer_info = ":".join(str(x) for x in self.client_address) + " [TCP]"
+        response = DNSHandler.process(data[2:], peer_info)
         size, limit = len(response), DNSConstants.TCP_SIZE_LIMIT
         assert size <= limit, f"Response too large (size={size}, limit={limit})"
         log.debug("Sending TCP packet (to=%s, data=%s)", self.client_address, response)
@@ -222,11 +230,10 @@ class UDPRequestHandler(socketserver.BaseRequestHandler):
 
     def handle(self):
         """Handle DNS request."""
-        log.debug("Received UDP packet (request=%s)", self.request)
         data = self.request[0].strip()
-        response = DNSHandler.process(data)
+        peer_info = ":".join(str(x) for x in self.client_address) + " [UDP]"
+        response = DNSHandler.process(data, peer_info)
         socket = self.request[1]
         size, limit = len(response), DNSConstants.UDP_SIZE_LIMIT
         assert size <= limit, f"Response too large (size={size}, limit={limit})"
-        log.debug("Sending UDP packet (to=%s, data=%s)", self.client_address, response)
         socket.sendto(response, self.client_address)
