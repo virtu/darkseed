@@ -163,6 +163,9 @@ in
           '';
         AmbientCapabilities = "CAP_NET_BIND_SERVICE";
         DynamicUser = true;
+        # rate limit per source-iup to 5 requests per minute
+        RateLimitBurst = 5;
+        RateLimitIntervalSec = "1min";
       };
     };
   };
