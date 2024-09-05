@@ -9,7 +9,7 @@ AAAA records, for the time being they use the BIP155-like encoding to make them 
 distinguishable from regular IPv6 addresses.
 
 `darkseed` can serve this data over the IP, Onion, I2P and Cjdns networks. To provide
-reachability via Onion and I2P, the seeder supports TCP via DNS; Cjdns is handled via
+reachability via Onion and I2P, the seeder supports DNS via UDP; Cjdns is handled via
 regular TCP via UDP. Consequently, `darkseed` can help bootstrap darknet Bitcoin nodes
 by providing them with darknet peers without exiting the darknet.
 
