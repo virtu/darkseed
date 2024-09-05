@@ -7,7 +7,7 @@ import os
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
-__version__ = importlib.metadata.version(__package__ or __name__)
+__version__ = importlib.metadata.version("darkseed")
 
 
 @dataclass(frozen=True)
