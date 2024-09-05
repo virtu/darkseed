@@ -17,10 +17,11 @@ by providing them with darknet peers without exiting the darknet.
 
 ### darkdig
 
-Tool to query a DNS peer and decode custom DNS NULL records used by `darkseed`.
+Tool to send DNS queries and decode custom DNS NULL records used by `darkseed`.
 
-The ANY query type will return a mix of clearnet and darknet addresses. The A, AAAA and
-NULL query types will respectively return IPv4, IPv6 and darknet addresses exclusively.
+`darkseed` will answer the ANY query type with a mix of clearnet and darknet addresses.
+Replies to the A, AAAA and NULL query types respectively consist of IPv4, IPv6 and
+darknet addresses exclusively.
 
 ```bash
 darkdig --type ANY dnsseed.21.ninja
@@ -67,7 +68,6 @@ shell . -c darkdig dnsseed.21.ninja`
 You can also use regular `dig` to query the server, although this means the NULL record
 won't be decoded:
 
-```bash
 ```bash
 dig ANY dnsseed.21.ninja
 
