@@ -13,7 +13,7 @@ import dns.rdatatype
 import dns.rrset
 
 from darkseed.address import Address, NetworkType
-from darkseed.config import DNSConfig
+from darkseed.cli.darkseed import DarkseedDNSConfig
 from darkseed.node_manager import NodeManager
 
 from .null_record import NullRecord
@@ -184,7 +184,7 @@ class DNSHandler:
 class DNSServer(threading.Thread):
     """DNS server."""
 
-    config: DNSConfig
+    config: DarkseedDNSConfig
     node_manager: NodeManager
 
     def __post_init__(self):

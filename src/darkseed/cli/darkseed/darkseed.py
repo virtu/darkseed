@@ -3,9 +3,10 @@
 import logging as log
 import time
 
-from darkseed.config import get_config
 from darkseed.dns import DNSServer
 from darkseed.node_manager import NodeManager
+
+from .config import get_config
 
 
 def main():
