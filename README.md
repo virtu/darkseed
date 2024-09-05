@@ -125,6 +125,11 @@ A demo instance of `darkseed` is reachable via TOR, I2P and Cjdns.
 Unfortunately I haven't found a way to integrate Onion and I2P addresses in DNS NS
 records, so nameservers have to be specified manually for now.
 
+NOTE: Due to shenanigans with DNS (DOS attacks where attackers spoof UDP source IPs in
+small DNS packets to overwhelm a target with large replies), the demo `darkseed`
+instance is rate limited to five requests per minute using `fail2ban` with a ban time of
+one hour.
+
 ### Tor
 
 Instances are reachable under the following addresses:
