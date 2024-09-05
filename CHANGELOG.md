@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.2] - 2024-09-05
+
+- Refuse unsupported query types
+- Fix bug where output of class and type was mixed up
+
 ## [0.11.1] - 2024-09-05
 
 - Improve file layout

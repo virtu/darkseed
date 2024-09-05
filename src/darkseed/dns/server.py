@@ -101,13 +101,23 @@ class DNSHandler:
             )
             return cls.refuse(request)
 
+        if question.rdtype not in DNSHandler.RDTYPE_TO_NETCOUNT:
+            log.warning(
+                "Refusing DNS query for unsupported type: from=%s, size=%d, name=%s, type=%s",
+                peer_info,
+                len(data),
+                qdomain,
+                dns.rdatatype.to_text(question.rdtype),
+            )
+            return cls.refuse(request)
+
         log.info(
             "Received DNS query: from=%s, size=%d, domain=%s, class=%s, type=%s",
             peer_info,
             len(data),
             qdomain,
-            dns.rdatatype.to_text(question.rdtype),
             dns.rdataclass.to_text(question.rdclass),
+            dns.rdatatype.to_text(question.rdtype),
         )
         response_bytes, response_records = cls.create_response(request)
         log.info(
