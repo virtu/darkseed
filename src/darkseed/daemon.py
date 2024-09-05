@@ -23,7 +23,7 @@ def main():
     node_manager = NodeManager(conf.crawler_path)
     node_manager.start()
 
-    dns_server = DNSServer(conf.dns, node_manager)
+    dns_server = DNSServer(conf.dns.address, conf.dns.port, conf.dns.zone, node_manager)
     dns_server.start()
 
 

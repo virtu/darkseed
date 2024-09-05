@@ -13,7 +13,6 @@ import dns.rdatatype
 import dns.rrset
 
 from darkseed.address import Address, NetworkType
-from darkseed.config import DNSConfig
 from darkseed.node_manager import NodeManager
 
 from .null_record import NullRecord
@@ -184,13 +183,15 @@ class DNSHandler:
 class DNSServer(threading.Thread):
     """DNS server."""
 
-    config: DNSConfig
+    address: str
+    port: int
+    zone: str
     node_manager: NodeManager
 
     def __post_init__(self):
         super().__init__(name=self.__class__.__name__)
         DNSHandler.set_node_manager(self.node_manager)
-        DNSHandler.set_zone(self.config.zone)
+        DNSHandler.set_zone(self.zone)
 
     def run(self):
         """Start TCP and UDP DNS server threads."""
@@ -208,7 +209,7 @@ class DNSServer(threading.Thread):
             log.info("Started DNS server on %s:%d [%s]", address, port, protocol)
 
         for proto in ("TCP", "UDP"):
-            _start_server(self.config.address, self.config.port, proto)
+            _start_server(self.address, self.port, proto)
 
 
 class TCPRequestHandler(socketserver.BaseRequestHandler):
