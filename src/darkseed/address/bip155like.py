@@ -1,37 +1,92 @@
-"""Module for network addresses, including encoding/decoding of darknet addresses."""
+"""BIP155-like address encoding and decoding."""
 
 import base64
 import hashlib
+import io
+import ipaddress
 from dataclasses import dataclass
+from typing import ClassVar
 
 from .address import Address
 from .network import DarknetSpecs
 
 
-@dataclass(frozen=True)
-class AddressCodec:
-    """
-    Address Codec for encoding/decoding darknet addresses.
+@dataclass
+class NetworkConf:
+    """Class representing network configuration parameters."""
 
-    Supported formats:
-    - address
-    - binary (corresponding to 256-bit pubkey (cjdns) or hash (i2p))
-    - base64
-    - base85
+    net_id: int
+    address_len: int
+
+
+@dataclass
+class BIP155:
+    """BIP155 network parameters."""
+
+    IPV4: ClassVar[NetworkConf] = NetworkConf(0x01, 4)
+    IPV6: ClassVar[NetworkConf] = NetworkConf(0x02, 16)
+    TORV2: ClassVar[NetworkConf] = NetworkConf(0x03, 10)
+    TORV3: ClassVar[NetworkConf] = NetworkConf(0x04, 32)
+    I2P: ClassVar[NetworkConf] = NetworkConf(0x05, 32)
+    CJDNS: ClassVar[NetworkConf] = NetworkConf(0x06, 16)
+    YGGDRASIL: ClassVar[NetworkConf] = NetworkConf(0x07, 16)
+
+
+@dataclass(frozen=True)
+class BIP155Like:
+    """
+    BIP155-Like Codec for encoding/decoding darknet addresses. Does not include
+    a timestamp or port as BIP155.
     """
 
     @staticmethod
-    def encode_address(address: Address, encoding: str = "address") -> str | bytes:
-        """Encoding address using encoding."""
-        if encoding == "address":
-            return address.address
-        if not (address.onion or address.i2p):
+    def encode(address: Address) -> bytes:
+        """Encode address using encoding."""
+        if not (address.onion or address.i2p or address.cjdns):
             raise ValueError(f"Invalid encoding for network type: {address.net_type}")
         if address.onion:
-            return OnionAddressCodec.encode_address(address, encoding)
+            net_id_bytes = BIP155.TORV3.net_id.to_bytes(1, "big")
+            data = OnionAddressCodec.encode_address(address, encoding="raw")
+            assert isinstance(data, bytes)
+            return net_id_bytes + data
         if address.i2p:
-            return I2PAddressCodec.encode_address(address, encoding)
+            net_id_bytes = BIP155.I2P.net_id.to_bytes(1, "big")
+            data = I2PAddressCodec.encode_address(address, encoding="raw")
+            assert isinstance(data, bytes)
+            return net_id_bytes + data
+        if address.cjdns:
+            net_id_bytes = BIP155.CJDNS.net_id.to_bytes(1, "big")
+            data = ipaddress.ip_address(address.address).packed
+            return net_id_bytes + data
         raise ValueError(f"Unsupported network type: {address.net_type}")
+
+    @staticmethod
+    def _supported_networks(net_id: int) -> bool:
+        """Check if network is supported."""
+        return net_id in (BIP155.TORV3.net_id, BIP155.I2P.net_id, BIP155.CJDNS.net_id)
+
+    @staticmethod
+    def decode(s: io.BytesIO) -> Address:
+        """Encode address using encoding."""
+        net_id = int.from_bytes(s.read(1), "big")
+        if net_id == BIP155.TORV3.net_id:
+            address_len = BIP155.TORV3.address_len
+            decoder = OnionAddressCodec.pubkey_to_address
+        elif net_id == BIP155.I2P.net_id:
+            address_len = BIP155.I2P.address_len
+            decoder = I2PAddressCodec.hash_to_address
+        elif net_id == BIP155.CJDNS.net_id:
+            address_len = BIP155.CJDNS.address_len
+
+            def decoder_(data):
+                return str(ipaddress.ip_address(data))
+
+            decoder = decoder_
+        else:
+            raise ValueError(f"Unsupported network id: {net_id}")
+        address_data = s.read(address_len)
+        address_str = decoder(address_data)
+        return Address(address_str)
 
 
 class OnionAddressCodec:

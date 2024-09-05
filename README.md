@@ -2,14 +2,16 @@
 
 A proof-of-concept darknet Bitcoin DNS seeder.
 
-`darkseed` can advertise Onion, I2P and CJDNS node
-addresses using custom DNS NULL records in which addresses are encoded using a
-BIP155-like format. `darkseed` can serve this data over
-the IP, Onion, I2P and Cjdns networks. To provide reachability via Onion and I2P, the
-seeder supports TCP via DNS; Cjdns is handled via regular TCP via UDP.
+`darkseed` can advertise Onion, I2P and CJDNS node addresses using custom DNS NULL
+records in which addresses are encoded using a BIP155-like format (essentially BIP155
+sans timestamp and port). Although CJDNS addresses could be represented using regular
+AAAA records, for the time being they use the BIP155-like encoding to make them easily
+distinguishable from regular IPv6 addresses.
 
-Consequently, `darkseed` can help bootstrap darknet Bitcoin nodes by providing them with
-darknet peers without exiting the darknet.
+`darkseed` can serve this data over the IP, Onion, I2P and Cjdns networks. To provide
+reachability via Onion and I2P, the seeder supports TCP via DNS; Cjdns is handled via
+regular TCP via UDP. Consequently, `darkseed` can help bootstrap darknet Bitcoin nodes
+by providing them with darknet peers without exiting the darknet.
 
 ## Components
 
@@ -17,50 +19,91 @@ darknet peers without exiting the darknet.
 
 Tool to query a DNS peer and decode custom DNS NULL records used by `darkseed`.
 
-Example:
+The ANY query type will return a mix of clearnet and darknet addresses. The A, AAAA and
+NULL query types will respectively return IPv4, IPv6 and darknet addresses exclusively.
 
 ```bash
 darkdig --type ANY dnsseed.21.ninja
-
-; <<>> darkdig 0.10.0 <<>> @185.12.64.1 -p 53 dnsseed.21.ninja
-;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 57103
+; <<>> darkdig 0.11.0 <<>> @185.12.64.1 -p 53 dnsseed.21.ninja
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 21953
 ;; flags: qr rd ra, QUERY: 1, ANSWER: 3, AUTHORITY: 0, ADDITIONAL: 0
 
 ;;QUESTION SECTION:
 ; domain=dnsseed.21.ninja., rdclass=IN, rdtype=ANY
 
 ;;ANSWER SECTION:
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=190.2.140.148
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=147.135.136.53
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=86.104.228.36
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=191.13.128.58
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=103.231.42.36
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=80.67.179.144
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=46.4.119.153
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=135.181.199.179
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=162.219.38.94
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=84.75.176.110
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=AAAA, data=fc32:2c16:d0d0:f1fb:3b27:c187:8cb5:9201
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=AAAA, data=2a01:4f8:262:4d80::2
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=AAAA, data=2a01:e0a:dec:3d50:4f87:2004:3f1d:90c7
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=AAAA, data=2600:1900:40b0:3af2:0:5::
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=AAAA, data=2a01:e0a:c4d:9dd0:c58a:d613:2417:a9dc
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=AAAA, data=fc95:6edb:af65:9ea3:cd27:21ef:f5e2:29c6
+domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=168.119.72.213
+domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=71.56.178.136
+domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=120.226.39.100
+domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=198.98.117.238
+domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=216.41.130.41
+domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=109.145.44.244
+domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=75.119.148.111
+domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=104.193.198.210
+domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=80.79.5.152
+domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=80.108.219.153
+domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=AAAA, data=2a13:4ac0:10:0:f816:3eff:febe:72a5
+domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=AAAA, data=2600:1f18:66fc:d700:9b71:f45:f3c9:c43b
+domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=AAAA, data=2a01:4f8:13b:3692::2
+domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=AAAA, data=2a01:e0a:b5:7f50:c257:a55b:4846:97e1
 domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=NULL
-;; ->>custom NULL encoding<<- size: 133, records: 4, data (base64): BAAEXjYaYI6QymodE3FtbrqFmSB+rgybXuW53vF6vyJEOgAvsXpohUCf5JmOt981bYpOj15eG/6fpgG2Cr3KebkkjgG3yyQnPE0VNOXqkLSCC0tMx4Ua5Ik2zY7FbDM16LN2hAEOhIKDmywBsI+R6AbpKdhwb076hZqB3eJS0lhd9F+WHw
-;; ->>custom NULL-encoded address <<- record: 0, address: arpdmgtar2imu2q5cnyw23v2qwmsa7vobsnv5znz33yxvpzciq5dqeid.onion
-;; ->>custom NULL-encoded address <<- record: 1, address: f6yxu2eficp6jgmow7ptk3mkj2hv4xq372p2manwbk64u6nzeshozqid.onion
-;; ->>custom NULL-encoded address <<- record: 2, address: w7fsijz4juktjzpksc2iec2ljtdykgxere3m3dwfnqztl2fto2ca.b32.i2p
-;; ->>custom NULL-encoded address <<- record: 3, address: b2cifa43fqa3bd4r5adoskoyobxu56uftka53yss2jmf35c7sypq.b32.i2p
+;; ->>custom NULL encoding<<- size: 167, records: 6, data (base64): BgQ6cwf3BI5e0OTATsTwpSjkQHibwghQieD3YQ7mG7kfugRAc5QoBdpw86fvfx/U2GrRCiL5MsguL81A/QZUumNolwVoWIU1a6BMXVSwSrWULGnlgxbUNv/nV/CX2rmx0sFgLgU3XDZWCzYqsNL6MWKFDJH+9/NDk8Txs9vnGjtAwf/UDQb8oAFReayJkrUevcRu2UG+BvyVbtuvZZ6jzSch7/XiKcY
+;; ->>custom NULL-encoded address <<- record: 0, net_type: onion_v3, address: hjzqp5yerzpnbzgaj3cpbjji4rahrg6cbbiityhxmehomg5zd65fx5id.onion
+;; ->>custom NULL-encoded address <<- record: 1, net_type: onion_v3, address: ibzzikaf3jyphj7pp4p5jwdk2efcf6jszaxc7tka7udfjotdnclukuad.onion
+;; ->>custom NULL-encoded address <<- record: 2, net_type: i2p, address: nbmiknllubgf2vfqjk2zildj4wbrnvbw77tvp4ex3k43duwbmaxa.b32.i2p
+;; ->>custom NULL-encoded address <<- record: 3, net_type: i2p, address: g5odmvqlgyvlbux2gfrikder7337gq4tyty3hw7hdi5ubqp72qgq.b32.i2p
+;; ->>custom NULL-encoded address <<- record: 4, net_type: cjdns, address: fca0:151:79ac:8992:b51e:bdc4:6ed9:41be
+;; ->>custom NULL-encoded address <<- record: 5, net_type: cjdns, address: fc95:6edb:af65:9ea3:cd27:21ef:f5e2:29c6
 
-;; Query time: 117 msec
+;; Query time: 501 msec
 ;; SERVER: 185.12.64.1#53
-;; WHEN: Wed Sep 04 15:35:58 CEST 2024
-;; MSG SIZE  rcvd: 507
+;; WHEN: Thu Sep 05 07:54:16 CEST 2024
+;; MSG SIZE  rcvd: 485
 ```
 
 NOTE: The repository contains a Nix flake so to test without installing use `nix
 shell . -c darkdig dnsseed.21.ninja`
+
+You can also use regular `dig` to query the server, although this means the NULL record
+won't be decoded:
+
+```bash
+```bash
+dig ANY dnsseed.21.ninja
+
+; <<>> DiG 9.18.20 <<>> ANY dnsseed.21.ninja
+;; global options: +cmd
+;; Got answer:
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 15743
+;; flags: qr rd ra; QUERY: 1, ANSWER: 15, AUTHORITY: 0, ADDITIONAL: 1
+
+;; OPT PSEUDOSECTION:
+; EDNS: version: 0, flags:; udp: 1232
+;; QUESTION SECTION:
+;dnsseed.21.ninja.    IN  ANY
+
+;; ANSWER SECTION:
+dnsseed.21.ninja. 60  IN  A 216.121.186.10
+dnsseed.21.ninja. 60  IN  A 185.205.124.79
+dnsseed.21.ninja. 60  IN  A 79.239.226.41
+dnsseed.21.ninja. 60  IN  A 88.71.79.122
+dnsseed.21.ninja. 60  IN  A 65.108.72.50
+dnsseed.21.ninja. 60  IN  A 90.76.125.121
+dnsseed.21.ninja. 60  IN  A 136.32.241.190
+dnsseed.21.ninja. 60  IN  A 93.123.180.164
+dnsseed.21.ninja. 60  IN  A 199.85.210.133
+dnsseed.21.ninja. 60  IN  A 144.2.121.100
+dnsseed.21.ninja. 60  IN  AAAA  2001:f40:94e:7ff:7270:fcff:fe05:3cd
+dnsseed.21.ninja. 60  IN  AAAA  2a03:4000:6:162d::1
+dnsseed.21.ninja. 60  IN  AAAA  2a01:4f8:202:3e6::2
+dnsseed.21.ninja. 60  IN  AAAA  2a10:3781:3a73:25:a177:ad25:b14a:176a
+dnsseed.21.ninja. 60  IN  NULL  \# 167 060432D092A38189F7986AF56E71D3020A415C225118CE098209C91A E04FF5B6712604FC9BEFA1C1B056A62F841E568A43220DBAF0263EFB 497C7826FCFC83C8F9D43105B61A77223CDE421DD1CF5B3687615AE6 D157F3B6FEC4F834CB333A705BE767260592DACA4C9D778FADAC6866 F968BB993F200D3C476C94C1BC8AD3722FD3AECFD306FC322C16D0D0 F1FB3B27C1878CB5920106FCC7BE49CCD1DC913125F0DA457D08CE
+
+;; Query time: 28 msec
+;; SERVER: 185.12.64.1#53(185.12.64.1) (TCP)
+;; WHEN: Thu Sep 05 07:56:31 CEST 2024
+;; MSG SIZE  rcvd: 496
+```
 
 ## Local Testing (with Nix)
 
@@ -85,8 +128,8 @@ records, so nameservers have to be specified manually for now.
 ### Tor
 
 Instances are reachable under the following addresses:
-- `d4natwynl7lqkkklzsiw4is2esztijy54v77vjfqqrmwkucm3ygjlcyd.onion`
 - `qhhxx7a2fcbzk2p2bj257c7uhrjorzhnyefuo34epmm3vlooqwemfmad.onion`
+- `d4natwynl7lqkkklzsiw4is2esztijy54v77vjfqqrmwkucm3ygjlcyd.onion`
 
 Since Tor does not support UDP, the DNS query must be sent via TCP. This is done using
 the Tor Socks5 proxy, which is reachable via `localhost:9050` by default. Note that
@@ -96,49 +139,50 @@ Tor (for NixOS, simply set `darkseed.client.enable` = true).
 Example:
 
 ```bash
- darkdig dnsseed.21.ninja. --type ANY --nameserver qhhxx7a2fcbzk2p2bj257c7uhrjorzhnyefuo34epmm3vlooqwemfmad.onion --socks5-proxy 127.0.0.1:9050 --tcp
-; <<>> darkdig 0.10.0 <<>> @qhhxx7a2fcbzk2p2bj257c7uhrjorzhnyefuo34epmm3vlooqwemfmad.onion -p 53 --socks5-proxy 127.0.0.1:9050 --tcp dnsseed.21.ninja.
-;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 41195
+darkdig dnsseed.21.ninja. --type ANY --nameserver qhhxx7a2fcbzk2p2bj257c7uhrjorzhnyefuo34epmm3vlooqwemfmad.onion --socks5-proxy 127.0.0.1:9050 --tcp
+
+; <<>> darkdig 0.11.0 <<>> @qhhxx7a2fcbzk2p2bj257c7uhrjorzhnyefuo34epmm3vlooqwemfmad.onion -p 53 --socks5-proxy 127.0.0.1:9050 --tcp dnsseed.21.ninja.
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 54269
 ;; flags: qr rd, QUERY: 1, ANSWER: 3, AUTHORITY: 0, ADDITIONAL: 0
 
 ;;QUESTION SECTION:
 ; domain=dnsseed.21.ninja., rdclass=IN, rdtype=ANY
 
 ;;ANSWER SECTION:
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=100.20.110.240
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=167.99.6.85
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=50.83.111.96
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=198.7.114.58
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=109.199.103.39
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=95.217.77.101
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=203.11.72.6
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=47.62.225.47
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=213.168.187.27
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=34.106.58.234
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=AAAA, data=2001:fb1:ba:9c18:3b4c:ee66:2d1:684f
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=AAAA, data=2605:6440:3001:2f:3eec:efff:fe91:f840
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=AAAA, data=2a03:b0c0:3:d0::f3e:3001
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=AAAA, data=2a01:7e01::f03c:94ff:fe79:2d9c
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=AAAA, data=fccb:248:11a6:1042:bca:1218:f7ce:7d3d
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=AAAA, data=fcf1:22ff:3070:582f:a873:61bc:4bc1:81bf
+domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=144.91.115.96
+domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=34.97.134.215
+domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=24.220.72.43
+domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=37.63.53.45
+domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=195.201.28.201
+domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=104.155.87.142
+domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=136.34.197.3
+domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=188.166.102.98
+domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=66.130.255.242
+domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=158.220.97.83
+domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=AAAA, data=2401:4900:1c97:b147:2460:2e:3cbb:dcde
+domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=AAAA, data=2600:3c01::f03c:91ff:fed8:db38
+domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=AAAA, data=2a01:4f9:2a:19a7::2
+domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=AAAA, data=2002:c338:3f0c::c338:3f0c
 domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=NULL
-;; ->>custom NULL encoding<<- size: 133, records: 4, data (base64): BACAO7R4TrNHBXVG3lymrTI932H+6PX8yftgNy14zHnkAwA3Kli7EereSNmQiSvmihaQNR/2XSzPyi/5Fxau0VXs6wEfFuuraV29ZBBvp4XnishsKyu3/pVDvervN9WDljIbzwEgTzkjMQS6GrY33vSQNgTM+YSyRx5H9zUM8DvsZll2pA
-;; ->>custom NULL-encoded address <<- record: 0, address: qa53i6cowndqk5kg3zoknljshxpwd7xi6x6mt63ag4wxrtdz4qbyhhid.onion
-;; ->>custom NULL-encoded address <<- record: 1, address: g4vfroyr5lperwmqrev6ncqwsa2r75s5fth4ul7zc4lk5ukv5tvrddyd.onion
-;; ->>custom NULL-encoded address <<- record: 2, address: d4loxk3jlw6wiedpu6c6pcwinqvsxn76svb332xpg7kyhfrsdphq.b32.i2p
-;; ->>custom NULL-encoded address <<- record: 3, address: ebhtsizras5bvnrx332janqezt4yjmshdzd7onim6a56yzszo2sa.b32.i2p
+;; ->>custom NULL encoding<<- size: 167, records: 6, data (base64): BgRlWurDygz2eTXWy2nv3jdmFhwR3dPZ7qFdiMP8RfcIDAQXj4qpTY9vFs+3uO/Euk+aLCo2FNsBzD6+nnQtXYxRawVHBEC8rkEA/H6Xbj8U1bn6V/jCvdyKswO8eB6+QwJfyAWSBVu1voQ9Bp/nZ/iGMZdKFDG/6t8sFVNCRBwnOYP6rwb8bfVihqB5HYogeqKIeSF2Bvxw3p1/4gsyWCgaPA0Pg+w
+;; ->>custom NULL-encoded address <<- record: 0, net_type: onion_v3, address: mvnovq6kbt3hsnowznu67xrxmylbyeo52pm65ik5rdb7yrpxbagcubyd.onion
+;; ->>custom NULL-encoded address <<- record: 1, net_type: onion_v3, address: c6hyvkknr5xrnt5xxdx4josptiwcunqu3ma4ypv6tz2c2xmmkfv5ghid.onion
+;; ->>custom NULL-encoded address <<- record: 2, net_type: i2p, address: i4cebpfoieapy7uxny7rjvnz7jl7rqv53sflga54papl4qycl7ea.b32.i2p
+;; ->>custom NULL-encoded address <<- record: 3, net_type: i2p, address: sicvxnn6qq6qnh7hm74immmxjikddp7k34wbku2ciqocoomd7kxq.b32.i2p
+;; ->>custom NULL-encoded address <<- record: 4, net_type: cjdns, address: fc6d:f562:86a0:791d:8a20:7aa2:8879:2176
+;; ->>custom NULL-encoded address <<- record: 5, net_type: cjdns, address: fc70:de9d:7fe2:b32:5828:1a3c:d0f:83ec
 
-;; Query time: 4546 msec
+;; Query time: 3441 msec
 ;; SERVER: qhhxx7a2fcbzk2p2bj257c7uhrjorzhnyefuo34epmm3vlooqwemfmad.onion#53
-;; WHEN: Wed Sep 04 16:01:24 CEST 2024
-;; MSG SIZE  rcvd: 507
+;; WHEN: Thu Sep 05 08:00:51 CEST 2024
+;; MSG SIZE  rcvd: 485
 ```
 
 ### I2P
 
 Instances are reachable under the following addresses:
-- `ja7o42qnralhke5kwsatycm7hj4ssq6gqwdrcsjvgt3xe3a2tvga.b32.i2p`
 - `4ibvyflekkqc45domfbdlfp7zudurmd7x6whd4x5q7vsor7sgwtq.b32.i2p`
+- `ja7o42qnralhke5kwsatycm7hj4ssq6gqwdrcsjvgt3xe3a2tvga.b32.i2p`
 
 Since I2P does not support UDP, the DNS query must be sent via TCP. This is done using
 the Onion Socks5 proxy, which is reachable via `localhost:4447` by default. Note that
@@ -148,96 +192,96 @@ I2P (for NixOS, simply set `darkseed.client.enable` = true).
 Example:
 
 ```bash
- darkdig dnsseed.21.ninja. --type ANY --nameserver ja7o42qnralhke5kwsatycm7hj4ssq6gqwdrcsjvgt3xe3a2tvga.b32.i2p --socks5-proxy 127.0.0.1:4447 --tcp
-; <<>> darkdig 0.10.0 <<>> @ja7o42qnralhke5kwsatycm7hj4ssq6gqwdrcsjvgt3xe3a2tvga.b32.i2p -p 53 --socks5-proxy 127.0.0.1:4447 --tcp dnsseed.21.ninja.
-;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 22197
+darkdig dnsseed.21.ninja. --type ANY --nameserver 4ibvyflekkqc45domfbdlfp7zudurmd7x6whd4x5q7vsor7sgwtq.b32.i2p --socks5-proxy 127.0.0.1:4447 --tcp
+; <<>> darkdig 0.11.0 <<>> @4ibvyflekkqc45domfbdlfp7zudurmd7x6whd4x5q7vsor7sgwtq.b32.i2p -p 53 --socks5-proxy 127.0.0.1:4447 --tcp dnsseed.21.ninja.
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 24448
 ;; flags: qr rd, QUERY: 1, ANSWER: 3, AUTHORITY: 0, ADDITIONAL: 0
 
 ;;QUESTION SECTION:
 ; domain=dnsseed.21.ninja., rdclass=IN, rdtype=ANY
 
 ;;ANSWER SECTION:
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=3.68.109.55
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=161.35.54.110
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=85.195.244.202
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=198.144.183.184
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=136.243.104.27
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=75.36.7.189
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=37.34.182.236
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=173.249.7.254
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=174.0.23.151
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=183.88.244.125
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=AAAA, data=2407:8800:bc61:2220:555b:7e78:78a0:eb32
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=AAAA, data=2001:41d0:248:ac00::2
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=AAAA, data=2a01:4f9:4a:1385::2
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=AAAA, data=2602:47:2475:1600::1
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=AAAA, data=fca0:151:79ac:8992:b51e:bdc4:6ed9:41be
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=AAAA, data=fc32:17ea:e415:c3bf:9808:149d:b5a2:c9aa
+domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=8.217.206.230
+domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=50.102.2.188
+domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=34.74.24.33
+domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=154.26.159.203
+domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=34.96.182.63
+domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=54.146.220.99
+domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=13.229.129.207
+domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=171.97.235.226
+domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=87.209.21.41
+domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=219.79.200.233
+domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=AAAA, data=2a01:4f8:2190:2cc4::2
+domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=AAAA, data=2a01:4f9:2b:29a::2
+domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=AAAA, data=2604:a880:cad:d0::d8c:d001
+domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=AAAA, data=2a03:b0c0:1:e0::397:6001
 domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=NULL
-;; ->>custom NULL encoding<<- size: 133, records: 4, data (base64): BABJlYrnCBTnk5U2erb2FIqaB0NXRpHqhyPp25GD1JBTLABSYidMcyLDT+P38pigOeouSxmfluOVkUS7GCN3qdkIOAHiT8t9BakqD0T/XppGQdHgAgU70HfiNMNeXHwGld4wZAEBh7IGPJsUnr2xoqVj/XS6vhLMa2mtWrZ5aLUY9BZQIQ
-;; ->>custom NULL-encoded address <<- record: 0, address: jgkyvzyicttzhfjwpk3pmfektidugv2gshvioi7j3oiyhveqkmwmhhid.onion
-;; ->>custom NULL-encoded address <<- record: 1, address: kjrcotdtelbu7y7x6kmkaopkfzfrth4w4okzcrf3darxpkozba4oj4yd.onion
-;; ->>custom NULL-encoded address <<- record: 2, address: 4jh4w7ifveva6rh7l2nemqor4abako6qo7rdjq26lr6anfo6gbsa.b32.i2p
-;; ->>custom NULL-encoded address <<- record: 3, address: agd3ebr4tmkj5pnrukswh7luxk7bftdlngwvvntznc2rr5awkaqq.b32.i2p
+;; ->>custom NULL encoding<<- size: 167, records: 6, data (base64): BgRc/X1v3rrgYQmNl5mhyefwTsyC+C3HHBzAoUqc/ZeEJwShr1fgbGyB51MlotovQlTk/EPjI5h+Uy+crrkDS4KmaQVlM+GuwFjQAMWV4ZyIubFREzSgCKzf2XLY5dCp2psqIwUFAJnDJJU77Xg1ev7qXb+Fc5fdFSv3XQeCuP0c2xj8Pgb8lW7br2Weo80nIe/14inGBvzHvknM0dyRMSXw2kV9CM4
+;; ->>custom NULL-encoded address <<- record: 0, net_type: onion_v3, address: lt6x2366xlqgccmns6m2dsph6bhmzaxyfxdryhgauffjz7mxqqtr4tad.onion
+;; ->>custom NULL-encoded address <<- record: 1, net_type: onion_v3, address: ugxvpydmnsa6ouzfulnc6qsu4t6ehyzdtb7fgl44v24qgs4cuzuxucqd.onion
+;; ->>custom NULL-encoded address <<- record: 2, net_type: i2p, address: muz6dlwaldiabrmv4goironrkejtjiaivtp5s4wy4xiktwu3firq.b32.i2p
+;; ->>custom NULL-encoded address <<- record: 3, net_type: i2p, address: auajtqzesu5626bvpl7ouxn7qvzzpxivfp3v2b4cxd6rzwyy7q7a.b32.i2p
+;; ->>custom NULL-encoded address <<- record: 4, net_type: cjdns, address: fc95:6edb:af65:9ea3:cd27:21ef:f5e2:29c6
+;; ->>custom NULL-encoded address <<- record: 5, net_type: cjdns, address: fcc7:be49:ccd1:dc91:3125:f0da:457d:8ce
 
-;; Query time: 2287 msec
-;; SERVER: ja7o42qnralhke5kwsatycm7hj4ssq6gqwdrcsjvgt3xe3a2tvga.b32.i2p#53
-;; WHEN: Wed Sep 04 16:03:22 CEST 2024
-;; MSG SIZE  rcvd: 507
+;; Query time: 2570 msec
+;; SERVER: 4ibvyflekkqc45domfbdlfp7zudurmd7x6whd4x5q7vsor7sgwtq.b32.i2p#53
+;; WHEN: Thu Sep 05 08:05:04 CEST 2024
+;; MSG SIZE  rcvd: 485
 ```
 
 ### Cjdns
 
 Instances are reachable under the following addresses:
-- `fc1f:3640:c8e1:af7:d177:f6c9:e443:6fdf`
 - `fcf9:45bc:8c48:6973:7b3f:5538:6e51:8fc9`
+- `fc1f:3640:c8e1:af7:d177:f6c9:e443:6fdf`
 
 Cjdns works transparently and supports UDP, so no proxy and DNS over TCP is required.
 
 Example:
 
 ```bash
-darkdig dnsseed.21.ninja. --type ANY --nameserver fc1f:3640:c8e1:af7:d177:f6c9:e443:6fdf
-; <<>> darkdig 0.10.0 <<>> @fc1f:3640:c8e1:af7:d177:f6c9:e443:6fdf -p 53 dnsseed.21.ninja.
-;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 33234
+darkdig dnsseed.21.ninja. --type ANY --nameserver fcf9:45bc:8c48:6973:7b3f:5538:6e51:8fc9
+; <<>> darkdig 0.11.0 <<>> @fcf9:45bc:8c48:6973:7b3f:5538:6e51:8fc9 -p 53 dnsseed.21.ninja.
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 2091
 ;; flags: qr rd, QUERY: 1, ANSWER: 3, AUTHORITY: 0, ADDITIONAL: 0
 
 ;;QUESTION SECTION:
 ; domain=dnsseed.21.ninja., rdclass=IN, rdtype=ANY
 
 ;;ANSWER SECTION:
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=77.38.3.90
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=108.48.39.246
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=45.135.232.99
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=109.146.128.196
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=118.172.148.236
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=34.204.100.116
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=82.64.162.213
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=51.77.119.85
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=84.146.196.78
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=103.78.113.152
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=AAAA, data=2600:1700:5453:69e::109
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=AAAA, data=2a00:11c0:60:294:c48f:beff:fe15:a97f
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=AAAA, data=2001:1620:5566:100::62c
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=AAAA, data=2001:19f0:5001:389b:5400:4ff:fe8a:5bc6
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=AAAA, data=fc6d:f562:86a0:791d:8a20:7aa2:8879:2176
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=AAAA, data=fc32:2c16:d0d0:f1fb:3b27:c187:8cb5:9201
+domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=60.205.205.119
+domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=108.35.247.78
+domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=65.21.22.132
+domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=141.98.153.137
+domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=54.202.35.84
+domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=203.11.72.11
+domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=45.90.57.143
+domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=72.133.177.119
+domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=217.162.57.192
+domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=92.39.195.153
+domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=AAAA, data=2a01:4f8:c2c:a951::1
+domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=AAAA, data=2607:fea8:601e:7d01:be24:11ff:fe89:27f3
+domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=AAAA, data=2a01:4f8:1c1c:a0a6::1
+domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=AAAA, data=2a02:1210:4c5e:5a00:d450:529b:13b6:173
 domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=NULL
-;; ->>custom NULL encoding<<- size: 133, records: 4, data (base64): BAAD0KfgcbnOFxutK4v2RpKg8PxpVuts63pYgz3aoDZrEQAEaBJ7Vnt0Ne1YK1m8QnlkESvaiU6Js40C40GSRd4vlgHkzsqsBmTGDzC5VorSAqkXtz3wW9dq4povDuAF4F7TpQHVbPKvwq/R2YKwba1RdT12fSrLT/6L2CThkHUqMqE8dQ
-;; ->>custom NULL-encoded address <<- record: 0, address: apikpydrxhhbog5nfof7mrusudypy2kw5nwow6syqm65vibwnmi7ouyd.onion
-;; ->>custom NULL-encoded address <<- record: 1, address: arube62wpn2dl3kyfnm3yqtzmqisxwujj2e3hdic4nazero6f6lkr7id.onion
-;; ->>custom NULL-encoded address <<- record: 2, address: 4thmvlagmtda6mfzk2fneavjc63t34c325vofgrpb3qalyc62osq.b32.i2p
-;; ->>custom NULL-encoded address <<- record: 3, address: 2vwpfl6cv7i5tavqnwwvc5j5oz6svs2p72f5qjhbsb2sumvbhr2q.b32.i2p
+;; ->>custom NULL encoding<<- size: 167, records: 6, data (base64): BgS4WazO56P8gMge/e0fsmLdWkE5BiOkHW017vD82LK3SAS2GX9uBEvUzk0K5hMQAeaqlS7Q/JaIj231jl/an78hhAXgUQRBNi8SZFeX8wuKxab5GDqUtUhjM8gIk+YRJz0vqwXFlRiHGbGF0Ol0DxHc9RaZBlzoODHP/u65XHi7yVaMmwb8lW7br2Weo80nIe/14inGBvzLAkgRphBCC8oSGPfOfT0
+;; ->>custom NULL-encoded address <<- record: 0, net_type: onion_v3, address: xbm2ztxhup6ibsa67xwr7mtc3vnecoigeosb23jv53ypzwfsw5eaprid.onion
+;; ->>custom NULL-encoded address <<- record: 1, net_type: onion_v3, address: wymx63qejpkm4tik4yjraapgvkks5uh4s2ei63pvrzp5vh57egcb2oyd.onion
+;; ->>custom NULL-encoded address <<- record: 2, net_type: i2p, address: 4biqiqjwf4jgiv4x6mfyvrng7emdvffvjbrthsaisptbcjz5f6vq.b32.i2p
+;; ->>custom NULL-encoded address <<- record: 3, net_type: i2p, address: ywkrrbyzwgc5b2lub4i5z5iwtedfz2byghh753vzlr4lxskwrsnq.b32.i2p
+;; ->>custom NULL-encoded address <<- record: 4, net_type: cjdns, address: fc95:6edb:af65:9ea3:cd27:21ef:f5e2:29c6
+;; ->>custom NULL-encoded address <<- record: 5, net_type: cjdns, address: fccb:248:11a6:1042:bca:1218:f7ce:7d3d
 
-;; Query time: 21 msec
-;; SERVER: fc1f:3640:c8e1:af7:d177:f6c9:e443:6fdf#53
-;; WHEN: Wed Sep 04 16:06:17 CEST 2024
-;; MSG SIZE  rcvd: 507
+;; Query time: 206 msec
+;; SERVER: fcf9:45bc:8c48:6973:7b3f:5538:6e51:8fc9#53
+;; WHEN: Thu Sep 05 08:06:59 CEST 2024
+;; MSG SIZE  rcvd: 485
 ```
 
 ## Hints
 
-To test the Darknet availability of one's own `darkseed` instance, the following might
+To test the darknet availability of one's own `darkseed` instance, the following might
 be helpful.
 
 On NixOS, a `darkseed` instance's

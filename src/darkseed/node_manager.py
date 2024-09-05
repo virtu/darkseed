@@ -12,7 +12,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import ClassVar
 
-from darkseed.node import NetworkType, Node
+from darkseed.address import NetworkType
+from darkseed.node import Node
 
 
 @dataclass(unsafe_hash=True)

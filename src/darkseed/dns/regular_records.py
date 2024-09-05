@@ -10,10 +10,10 @@ from dns.rdatatype import A as A_TYPE
 from dns.rdtypes.IN.A import A
 from dns.rdtypes.IN.AAAA import AAAA
 
-from darkseed.node import Address
+from darkseed.address import Address
 
 
-class RecordBuilder:
+class RegularRecords:
     """Class for building DNS resource records."""
 
     @staticmethod
@@ -22,7 +22,7 @@ class RecordBuilder:
         if not (address.ipv4 or address.ipv6 or address.cjdns):
             raise ValueError(f"Unsupported address type: {address.net_type}")
 
-        rdata = RecordBuilder.get_rdata(address)
+        rdata = RegularRecords.get_rdata(address)
         record = dns.rrset.from_rdata(domain, ttl, rdata)
 
         log.debug(
