@@ -114,7 +114,7 @@ def parse_args():
     return args
 
 
-def get_config() -> Config:
+def get_config():
     """Parse command-line arguments and get configuration settings."""
 
     args = parse_args()
