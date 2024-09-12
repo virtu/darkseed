@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "darkseed"
-version = "0.11.2"
+version = "0.12"
 description = "Bitcoin DNS seeder with support for all network types"
 authors = ["virtu <virtu@cryptic.to>"]
 license = "AGPLv3"
