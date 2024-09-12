@@ -1,5 +1,6 @@
 """DNS functionality for Darkseed."""
 
+import ipaddress
 import logging as log
 import socketserver
 import threading
@@ -94,12 +95,12 @@ class DNSHandler:
         qdomain = question.name.to_text(omit_final_dot=False).lower()
         if qdomain != cls._ZONE:
             log.warning(
-                "Refusing DNS query for unknown zone: from=%s, size=%d, name=%s",
+                "Silently dropping DNS query for unknown zone: from=%s, size=%d, name=%s",
                 peer_info,
                 len(data),
                 qdomain,
             )
-            return cls.refuse(request)
+            return bytes()
 
         if question.rdtype not in DNSHandler.RDTYPE_TO_NETCOUNT:
             log.warning(
@@ -203,6 +204,13 @@ class DNSServer(threading.Thread):
         DNSHandler.set_node_manager(self.node_manager)
         DNSHandler.set_zone(self.zone)
 
+    @staticmethod
+    def get_peer_info(client_address: Tuple[str, int], protocol: str) -> str:
+        """Convert client address into peer string."""
+        address, port = client_address
+        ban = ipaddress.ip_network(f"{address}/16", strict=False)
+        return f"{address}:{port} (ban={ban}) [{protocol}]"
+
     def run(self):
         """Start TCP and UDP DNS server threads."""
 
@@ -237,8 +245,11 @@ class TCPRequestHandler(socketserver.BaseRequestHandler):
                 len(data),
             )
             return
-        peer_info = ":".join(str(x) for x in self.client_address) + " [TCP]"
+        peer_info = DNSServer.get_peer_info(self.client_address, protocol="TCP")
         response = DNSHandler.process(data[2:], peer_info)
+        # no response means the request should be ignored silently
+        if not response:
+            return
         size, limit = len(response), DNSConstants.TCP_SIZE_LIMIT
         assert size <= limit, f"Response too large (size={size}, limit={limit})"
         log.debug("Sending TCP packet (to=%s, data=%s)", self.client_address, response)
@@ -252,8 +263,11 @@ class UDPRequestHandler(socketserver.BaseRequestHandler):
     def handle(self):
         """Handle DNS request."""
         data = self.request[0].strip()
-        peer_info = ":".join(str(x) for x in self.client_address) + " [UDP]"
+        peer_info = DNSServer.get_peer_info(self.client_address, protocol="UDP")
         response = DNSHandler.process(data, peer_info)
+        # no response means the request should be ignored silently
+        if not response:
+            return
         socket = self.request[1]
         size, limit = len(response), DNSConstants.UDP_SIZE_LIMIT
         assert size <= limit, f"Response too large (size={size}, limit={limit})"

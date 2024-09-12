@@ -83,9 +83,9 @@ in
     };
     environment.etc."fail2ban/filter.d/darkseed.conf".text = /* ini */ ''
       [Definition]
-      # match all lines containing from=<address>, except from debug log
-      failregex = ^.* from=<HOST>.*$
-      ignoreregex = "^.* DEBUG .*$";
+      # match all lines containing ban=<SUBNET>, except from debug log
+      failregex = ^.*ban=<SUBNET>.*$
+      ignoreregex = ^.* DEBUG .*$
     '';
 
     # Make DNS server reachable via TOR
