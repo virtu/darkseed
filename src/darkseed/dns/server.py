@@ -45,9 +45,14 @@ class DNSHandler:
         dns.rdatatype.A: {NetworkType.IPV4: 29},
         dns.rdatatype.AAAA: {NetworkType.IPV6: 17},
         dns.rdatatype.NULL: {
-            NetworkType.ONION_V3: 5,
-            NetworkType.I2P: 5,
-            NetworkType.CJDNS: 4,
+            # NULL
+            # NetworkType.ONION_V3: 5,
+            # NetworkType.I2P: 5,
+            # NetworkType.CJDNS: 4,
+            # AAAA
+            NetworkType.ONION_V3: 3,
+            NetworkType.I2P: 3,
+            NetworkType.CJDNS: 3,
         },
         dns.rdatatype.ANY: {
             # NULL

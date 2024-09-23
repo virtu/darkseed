@@ -2,6 +2,7 @@
 
 import base64
 import importlib.metadata
+import logging as log
 import time
 
 import dns.flags
@@ -14,7 +15,7 @@ import dns.rdatatype
 import dns.resolver
 import socks
 
-from darkseed.dns import DNSConstants, NullRecordCodec
+from darkseed.dns import AAAACodec, DNSConstants, NullRecordCodec
 
 from .config import Config, get_config
 
@@ -145,7 +146,22 @@ class PrettyPrinter:
                     PrettyPrinter.print_regular_answer_record(rrset, rdata)
                 else:
                     PrettyPrinter.print_null_answer_record(rrset, rdata)
+            PrettyPrinter.maybe_print_aaaa_encoding(rrset)
         print("\n", end="")
+
+    @staticmethod
+    def maybe_print_aaaa_encoding(rrset):
+        """Print one regular DNS query response answer record."""
+        addresses = AAAACodec.decode(rrset)
+        if not addresses:
+            return
+
+        print(";; ->>custom AAAA encoding<<-")
+        for pos, address in enumerate(addresses):
+            print(";; ->>custom AAAA-encoded address <<-", end=" ")
+            print(f"record: {pos}", end=", ")
+            print(f"net_type: {address.net_type}", end=", ")
+            print(f"address: {address.address}")
 
     @staticmethod
     def print_regular_answer_record(rrset, rdata):
@@ -201,6 +217,13 @@ class PrettyPrinter:
 def main():
     """Entry point."""
     conf = get_config()
+    log.basicConfig(
+        level=conf.log_level,
+        format="%(asctime)s | %(levelname)-8s | %(message)s",
+        datefmt="%Y-%m-%dT%H:%M:%SZ",
+    )
+    log.Formatter.converter = time.gmtime
+
     print(f"; <<>> darkdig {__version__} <<>>", end=" ")
     if not conf.nameserver:
         resolver = dns.resolver.Resolver()
@@ -213,6 +236,8 @@ def main():
         print("--tcp", end=" ")
     if conf.verbose:
         print("-v", end=" ")
+    if conf.log_level:
+        print("-l {conf.log_level", end=" ")
     print(f"{conf.domain}")
 
     lookup_start = time.time()

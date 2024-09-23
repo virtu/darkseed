@@ -1,6 +1,7 @@
 """Configuration options for darkdig CLI tool."""
 
 import argparse
+import os
 import sys
 from dataclasses import asdict, dataclass
 from os import EX_USAGE
@@ -15,6 +16,7 @@ class Config:
     nameserver: str
     port: int
     proxy: str
+    log_level: str
     type: str
     tcp: bool
 
@@ -33,6 +35,7 @@ class Config:
             port=args.port,
             proxy=args.socks5_proxy,
             type=args.type,
+            log_level=args.log_level.upper(),
             tcp=args.tcp,
         )
 
@@ -75,6 +78,13 @@ def parse_args():
         type=str,
         default="",
         help="Proxy to use for DNS queries (e.g., localhost:9050) [default: Don't use proxy]",
+    )
+    parser.add_argument(
+        "-l",
+        "--log-level",
+        type=str,
+        default=os.environ.get("LOG_LEVEL", "INFO"),
+        help="Logging verbosity",
     )
 
     parser.add_argument(

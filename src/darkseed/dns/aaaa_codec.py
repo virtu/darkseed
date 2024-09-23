@@ -47,8 +47,10 @@ class AAAACodec:
         for record in records:
             if not isinstance(record, AAAA):
                 log.debug("Skipping non-AAAA record: %s", record)
+                continue
             if ipaddress.IPv6Address(record.address) not in AAAACodec.PREFIX:
                 log.debug("Skipping AAAA record not matching prefix: %s", record)
+                continue
             log.debug("Processing AAAA record: %s", record)
             address = ipaddress.IPv6Address(record.address)
             pos = address.packed[1]
@@ -79,7 +81,9 @@ class AAAACodec:
 
         if len(addresses) == 0:
             raise ValueError("No addresses to encode")
-        data = b"".join(BIP155Like.encode(addr) for addr in addresses)
+        num_recs_byte = len(addresses).to_bytes(1, "big")
+        data = num_recs_byte + b"".join(BIP155Like.encode(addr) for addr in addresses)
+        log.debug("Full payload: %s", data)
         s = io.BytesIO(data)
         records = []
         for pos in range(AAAACodec.RECORD_LIMIT):
@@ -88,10 +92,9 @@ class AAAACodec:
                 break
             if len(payload) < AAAACodec.PAYLOAD_BYTES:
                 payload += b"\x00" * (AAAACodec.PAYLOAD_BYTES - len(payload))
-            ip = ipaddress.IPv6Address(b"\xff" + pos.to_bytes(1, "big") + payload)
+            ip = str(ipaddress.IPv6Address(b"\xff" + pos.to_bytes(1, "big") + payload))
             log.debug("Encoding payload %s into address %s", payload, ip)
-            log.debug("ip={ip}, str(ip)={str(ip)}")
-            record = AAAA(IN, AAAA_TYPE, str(ip))
+            record = AAAA(IN, AAAA_TYPE, ip)
             records.append(record)
             pos += 1
         if s.tell() != len(data):
