@@ -1,16 +1,16 @@
 """Module for DNS-related functionality."""
 
-from .aaaa_record import AAAARecord, AAAARecordCodec
+from .aaaa_codec import AAAACodec, CustomAAAARecords
 from .null_record import NullRecord, NullRecordCodec
 from .regular_records import RegularRecords
 from .server import DNSConstants, DNSServer
 
 __all__ = [
+    "AAAACodec",
+    "CustomAAAARecords",
     "DNSConstants",
     "DNSServer",
     "RegularRecords",
     "NullRecord",
     "NullRecordCodec",
-    "AAAARecord",
-    "AAAARecordCodec",
 ]

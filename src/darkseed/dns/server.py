@@ -16,6 +16,7 @@ import dns.rrset
 from darkseed.address import Address, NetworkType
 from darkseed.node_manager import NodeManager
 
+from .aaaa_codec import CustomAAAARecords
 from .null_record import NullRecord
 from .regular_records import RegularRecords
 
@@ -37,6 +38,7 @@ class DNSHandler:
 
     _NODE_MANAGER: ClassVar[NodeManager]
     _ZONE: ClassVar[str]
+    _ENCODING: ClassVar[str]
     RDTYPE_TO_NETCOUNT: ClassVar[
         dict[dns.rdatatype.RdataType, dict[NetworkType, int]]
     ] = {
@@ -65,6 +67,11 @@ class DNSHandler:
     def set_zone(cls, zone: str):
         """Set the zone manager."""
         cls._ZONE = zone
+
+    @classmethod
+    def set_encoding(cls, encoding: str):
+        """Set the encoding for darknet addresses."""
+        cls._ENCODING = encoding
 
     @classmethod
     def refuse(cls, request: dns.message.Message) -> bytes:
@@ -178,8 +185,16 @@ class DNSHandler:
 
         darknet_addrs = [a for a in addresses if not (a.ipv4 or a.ipv6)]
         if darknet_addrs:
-            record = NullRecord.build_record(darknet_addrs, domain)
-            response.answer.append(record)
+            encoding = DNSHandler._ENCODING
+            if encoding == "NULL":
+                record = NullRecord.build_record(darknet_addrs, domain)
+                response.answer.append(record)
+            elif encoding == "AAAA":
+                records = CustomAAAARecords.build_records(darknet_addrs, domain)
+                for record in records:
+                    response.answer.append(record)
+            else:
+                raise ValueError(f"Unsupported encoding: {encoding}")
 
         size = len(response.to_wire())
         log.debug(
@@ -197,12 +212,14 @@ class DNSServer(threading.Thread):
     address: str
     port: int
     zone: str
+    encoding: str
     node_manager: NodeManager
 
     def __post_init__(self):
         super().__init__(name=self.__class__.__name__)
         DNSHandler.set_node_manager(self.node_manager)
         DNSHandler.set_zone(self.zone)
+        DNSHandler.set_encoding(self.encoding)
 
     @staticmethod
     def get_peer_info(client_address: Tuple[str, int], protocol: str) -> str:
