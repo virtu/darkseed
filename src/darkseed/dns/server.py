@@ -50,8 +50,12 @@ class DNSHandler:
             NetworkType.CJDNS: 4,
         },
         dns.rdatatype.ANY: {
-            NetworkType.IPV4: 10,
-            NetworkType.IPV6: 4,
+            # NULL
+            # NetworkType.IPV4: 10,
+            # NetworkType.IPV6: 4,
+            # AAAA
+            NetworkType.IPV4: 5,
+            NetworkType.IPV6: 2,
             NetworkType.ONION_V3: 2,
             NetworkType.I2P: 2,
             NetworkType.CJDNS: 2,

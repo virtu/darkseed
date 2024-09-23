@@ -89,10 +89,11 @@ class AAAACodec:
             if len(payload) < AAAACodec.PAYLOAD_BYTES:
                 payload += b"\x00" * (AAAACodec.PAYLOAD_BYTES - len(payload))
             ip = ipaddress.IPv6Address(b"\xff" + pos.to_bytes(1, "big") + payload)
-            record = AAAA(IN, AAAA_TYPE, ip)
+            log.debug("Encoding payload %s into address %s", payload, ip)
+            log.debug("ip={ip}, str(ip)={str(ip)}")
+            record = AAAA(IN, AAAA_TYPE, str(ip))
             records.append(record)
             pos += 1
-            log.debug("Encoded payload %s into address %s", payload, ip)
         if s.tell() != len(data):
             raise ValueError("Could not encode all data!")
         log.debug(
