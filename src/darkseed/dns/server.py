@@ -16,7 +16,7 @@ import dns.rrset
 from darkseed.address import Address, NetworkType
 from darkseed.node_manager import NodeManager
 
-from .aaaa_codec import CustomAAAARecords
+from .aaaa_codec import AAAACodec
 from .null_record import NullRecord
 from .regular_records import RegularRecords
 
@@ -199,7 +199,7 @@ class DNSHandler:
                 record = NullRecord.build_record(darknet_addrs, domain)
                 response.answer.append(record)
             elif encoding == "AAAA":
-                records = CustomAAAARecords.build_records(darknet_addrs, domain)
+                records = AAAACodec.encode(darknet_addrs, domain)
                 for record in records:
                     response.answer.append(record)
             else:
