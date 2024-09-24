@@ -1,6 +1,5 @@
 """CLI for darkdig."""
 
-import base64
 import importlib.metadata
 import logging as log
 import time
@@ -15,7 +14,7 @@ import dns.rdatatype
 import dns.resolver
 import socks
 
-from darkseed.dns import AAAACodec, DNSConstants, NullRecordCodec
+from darkseed.dns import AAAACodec, DNSConstants
 
 from .config import Config, get_config
 
@@ -142,10 +141,7 @@ class PrettyPrinter:
         print(";;ANSWER SECTION:")
         for rrset in response.section_from_number(1):
             for rdata in rrset:
-                if rdata.rdtype != dns.rdatatype.NULL:
-                    PrettyPrinter.print_regular_answer_record(rrset, rdata)
-                else:
-                    PrettyPrinter.print_null_answer_record(rrset, rdata)
+                PrettyPrinter.print_regular_answer_record(rrset, rdata)
             PrettyPrinter.maybe_print_aaaa_encoding(rrset)
         print("\n", end="")
 
@@ -173,30 +169,6 @@ class PrettyPrinter:
             f" rdtype={dns.rdatatype.to_text(rrset.rdtype)},"
             f" data={rdata}"
         )
-
-    @staticmethod
-    def print_null_answer_record(rrset, rdata):
-        """Print one custom NULL-encoded DNS query response answer record."""
-
-        print(
-            f"domain={rrset.name},"
-            f" ttl={rrset.ttl},"
-            f" rdclass={dns.rdataclass.to_text(rrset.rdclass)},"
-            f" rdtype={dns.rdatatype.to_text(rrset.rdtype)}"
-        )
-
-        data_base64 = base64.b64encode(rdata.to_wire()).decode("ascii").rstrip("=")
-        addresses = NullRecordCodec.decode(rdata.to_wire())
-        print(";; ->>custom NULL encoding<<-", end=" ")
-        print(f"size: {len(rdata.to_wire())}", end=", ")
-        print(f"records: {len(addresses)}", end=", ")
-        print(f"data (base64): {data_base64}")
-
-        for pos, address in enumerate(addresses):
-            print(";; ->>custom NULL-encoded address <<-", end=" ")
-            print(f"record: {pos}", end=", ")
-            print(f"net_type: {address.net_type}", end=", ")
-            print(f"address: {address.address}")
 
     @staticmethod
     def print_sections(response: dns.message.Message):

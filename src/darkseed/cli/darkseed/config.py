@@ -17,7 +17,6 @@ class DNSConfig:
     address: str
     port: int
     zone: str
-    encoding: str
 
     @classmethod
     def parse(cls, args):
@@ -26,9 +25,7 @@ class DNSConfig:
         if not zone.endswith("."):
             zone += "."
             print(f"Warning: Appended missing final dot to DNS zone: {zone}")
-        return cls(
-            address=args.address, port=args.port, zone=zone, encoding=args.encoding
-        )
+        return cls(address=args.address, port=args.port, zone=zone)
 
 
 @dataclass
@@ -105,13 +102,6 @@ def parse_args():
         type=str,
         required=True,
         help="Domain name for the DNS zone (e.g., dnsseed.acme.com.)",
-    )
-
-    parser.add_argument(
-        "--encoding",
-        type=str,
-        default="NULL",
-        help="Encoding used for darknet addresses (NULL or AAAA)",
     )
 
     parser.add_argument(

@@ -92,7 +92,7 @@ def parse_args():
         "--type",
         type=str,
         default="ANY",
-        help="Query type (A, AAAA, NULL, ...) [default: ANY]",
+        help="Query type (A, AAAA, ANY, ...) [default: ANY]",
     )
 
     parser.add_argument(
