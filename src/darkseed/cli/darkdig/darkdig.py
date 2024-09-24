@@ -237,7 +237,7 @@ def main():
     if conf.verbose:
         print("-v", end=" ")
     if conf.log_level:
-        print("-l {conf.log_level", end=" ")
+        print(f"-l {conf.log_level}", end=" ")
     print(f"{conf.domain}")
 
     lookup_start = time.time()
