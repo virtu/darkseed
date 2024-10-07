@@ -37,18 +37,23 @@ class DNSHandler:
 
     _NODE_MANAGER: ClassVar[NodeManager]
     _ZONE: ClassVar[str]
-    RDTYPE_TO_NETCOUNT: ClassVar[
-        dict[dns.rdatatype.RdataType, dict[NetworkType, int]]
+
+    QUESTION_TO_NETCOUNT: ClassVar[
+        dict[Tuple[str, dns.rdatatype.RdataType], dict[NetworkType, int]]
     ] = {
-        dns.rdatatype.A: {NetworkType.IPV4: 29},
-        dns.rdatatype.AAAA: {NetworkType.IPV6: 17},
-        dns.rdatatype.ANY: {
-            NetworkType.IPV4: 5,
-            NetworkType.IPV6: 2,
-            NetworkType.ONION_V3: 2,
-            NetworkType.I2P: 2,
-            NetworkType.CJDNS: 2,
-        },
+        ("", dns.rdatatype.ANY): {NetworkType.IPV4: 10, NetworkType.IPV6: 10},
+        ("", dns.rdatatype.A): {NetworkType.IPV4: 29},
+        ("", dns.rdatatype.AAAA): {NetworkType.IPV6: 17},
+        ("n1", dns.rdatatype.A): {NetworkType.IPV4: 29},
+        ("n1", dns.rdatatype.ANY): {NetworkType.IPV4: 29},
+        ("n2", dns.rdatatype.AAAA): {NetworkType.IPV6: 17},
+        ("n2", dns.rdatatype.ANY): {NetworkType.IPV6: 17},
+        ("n3", dns.rdatatype.AAAA): {NetworkType.ONION_V3: 6},
+        ("n3", dns.rdatatype.ANY): {NetworkType.ONION_V3: 6},
+        ("n4", dns.rdatatype.AAAA): {NetworkType.I2P: 6},
+        ("n4", dns.rdatatype.ANY): {NetworkType.I2P: 6},
+        ("n5", dns.rdatatype.AAAA): {NetworkType.CJDNS: 13},
+        ("n5", dns.rdatatype.ANY): {NetworkType.CJDNS: 13},
     }
 
     @classmethod
@@ -88,7 +93,7 @@ class DNSHandler:
 
         question = request.question[0]
         qdomain = question.name.to_text(omit_final_dot=False).lower()
-        if qdomain != cls._ZONE:
+        if not qdomain.endswith(cls._ZONE):
             log.warning(
                 "Silently dropping DNS query for unknown zone: from=%s, size=%d, name=%s",
                 peer_info,
@@ -97,9 +102,10 @@ class DNSHandler:
             )
             return bytes()
 
-        if question.rdtype not in DNSHandler.RDTYPE_TO_NETCOUNT:
+        subdomain = qdomain[: -len(DNSHandler._ZONE) - 1]  # remove dot and zone
+        if (subdomain, question.rdtype) not in DNSHandler.QUESTION_TO_NETCOUNT:
             log.warning(
-                "Refusing DNS query for unsupported type: from=%s, size=%d, name=%s, type=%s",
+                "Refusing DNS query for unsupported domain-type pair: from=%s, size=%d, name=%s, type=%s",
                 peer_info,
                 len(data),
                 qdomain,
@@ -125,13 +131,17 @@ class DNSHandler:
         return response_bytes
 
     @staticmethod
-    def select_addresses(rdtype: dns.rdatatype.RdataType) -> List[Address]:
+    def select_addresses(question: dns.rrset.RRset) -> List[Address]:
         """Get addresses based on RDTYPE in request.
 
         First, look up address types and corresponding numbers to select using
         RDTYPE. Then, request the data from the NodeManager.
         """
-        net_to_addr_num = DNSHandler.RDTYPE_TO_NETCOUNT[rdtype]
+
+        rdtype = question.rdtype
+        qdomain = question.name.to_text(omit_final_dot=False).lower()
+        subdomain = qdomain[: -len(DNSHandler._ZONE) - 1]  # remove trailing dot
+        net_to_addr_num = DNSHandler.QUESTION_TO_NETCOUNT[(subdomain, rdtype)]
         addresses = []
         for net, count in net_to_addr_num.items():
             if count:
@@ -144,7 +154,7 @@ class DNSHandler:
         response = dns.message.make_response(request)
         response.use_edns(False)
         question = request.question[0]
-        addresses = DNSHandler.select_addresses(question.rdtype)
+        addresses = DNSHandler.select_addresses(question)
         DNSHandler.add_records_to_response(response, addresses)
         log.debug(
             "Created response (size=%dB, records=%d)",
