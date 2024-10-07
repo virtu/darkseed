@@ -26,7 +26,7 @@ class AAAACodec:
     14-byte chunks. Each chunk is stored in a DNS AAAA record; in particular in
     bytes two through fourteen of the AAAA record's data field. To identify the
     custom encoding, the first byte of the data field is set to match the
-    restricted IPv6 prefix ff00::/8. To deal with recursive DNS resolvers
+    restricted IPv6 prefix fc00::/8. To deal with recursive DNS resolvers
     potentially reordering records, the second byte of the data field is used
     to store the ordering of the records.
 
@@ -36,6 +36,7 @@ class AAAACodec:
     decoded using the BIP155-like format.
     """
 
+    # TODO: Use BitArray to work on sub-byte level
     PREFIX: ClassVar[ipaddress.IPv6Network] = ipaddress.IPv6Network("fc00::/8")
     RDATA_BYTES = 16  # 128-bit/16-byte IPv6 address
     PREFIX_BYTES: ClassVar[int] = 1
@@ -105,6 +106,10 @@ class AAAACodec:
             assert AAAACodec.PREFIX.prefixlen % 8 == 0, "Prefix must be byte-aligned"
             pfxlen = int(AAAACodec.PREFIX.prefixlen / 8)
             pfx = AAAACodec.PREFIX.network_address.packed[:pfxlen]
+            # TODO: Use BitArray to work on sub-byte level
+            # pos_bit = BitArray(uint=pos, length=4 [or num bits])
+            # pfx_bit = BitArray(bytes=AAAACodec.PREFIX.network_address.packed)[:AAAACodec.PREFIX.prefixlen]
+            # ip = pfx + pos_bit + payload_bits
             ip = str(ipaddress.IPv6Address(pfx + pos.to_bytes(1, "big") + payload))
             print(AAAACodec.PREFIX)
             log.debug("Encoding payload %s into address %s", payload, ip)
