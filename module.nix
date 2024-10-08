@@ -129,6 +129,7 @@ in
 
     systemd.services.darkseed = {
       description = "darkseed";
+      wants = [ "network-online.target" ];
       after = [ "network-online.target" ];
       wantedBy = [ "multi-user.target" ];
       serviceConfig = {
