@@ -2,11 +2,11 @@
 
 A proof-of-concept darknet Bitcoin DNS seeder.
 
-`darkseed` can advertise Onion, I2P and CJDNS node addresses using custom DNS NULL
-records in which addresses are encoded using a BIP155-like format (essentially BIP155
-sans timestamp and port). Although CJDNS addresses could be represented using regular
-AAAA records, for the time being they use the BIP155-like encoding to make them easily
-distinguishable from regular IPv6 addresses.
+`darkseed` can advertise Onion, I2P and CJDNS node addresses using custom-encoded DNS
+AAAA records which use a BIP155-like format (essentially BIP155 sans timestamp and
+port). Although CJDNS addresses could be represented using regular AAAA records, for the
+time being they use the BIP155-like encoding to make them easily distinguishable from
+regular IPv6 addresses.
 
 `darkseed` can serve this data over the IP, Onion, I2P and Cjdns networks. To provide
 reachability via Onion and I2P, the seeder supports DNS via TCP; Cjdns is handled via
@@ -17,11 +17,27 @@ by providing them with darknet peers without exiting the darknet.
 
 ### darkdig
 
-Tool to send DNS queries and decode custom DNS NULL records used by `darkseed`.
+Tool to send DNS queries and decode `darkseed`'s custom-encoded DNS AAAA records.
 
-`darkseed` will answer the ANY query type with a mix of clearnet and darknet addresses.
-Replies to the A, AAAA and NULL query types respectively consist of IPv4, IPv6 and
-darknet addresses exclusively.
+`darkseed` will answer the A, AAAA, and ANY queries sent to the base domain with IPv4,
+IPv6, and a mix of IPv4/IPv6 addresses, respectively.
+
+Particular addresses types can be queried via subdomains, which use a similar format as
+the `x` subdomain used to query for particular service bits. The subdomain starts with
+`n` (for network id) and is followed by the network ids defined in
+[BIP155](https://github.com/bitcoin/bips/blob/master/bip-0155.mediawiki). The following
+subdomains are supported:
+- `n1` for IPv4 addresses
+- `n2` for IPv6 addresses
+- `n4` for TorV3 addresses
+- `n5` for I2P addresses
+- `n6` for CJDNS addresses
+
+Yggdrasil (`0x07`) and deprecated TorV2 (`0x03`) are not supported.
+
+Example:
+
+TODO
 
 ```bash
 darkdig --type ANY dnsseed.21.ninja
@@ -69,7 +85,7 @@ You can also use regular `dig` to query the server, although this means the NULL
 won't be decoded:
 
 ```bash
-dig ANY dnsseed.21.ninja
+dig ANY x4.dnsseed.21.ninja
 
 ; <<>> DiG 9.18.20 <<>> ANY dnsseed.21.ninja
 ;; global options: +cmd
@@ -117,182 +133,3 @@ nix run . -- --log-level debug --crawler-path $(git rev-parse --show-toplevel)/t
 # Test
 nix shell . -c darkdig seed.acme.com --nameserver 127.0.0.1 -p 8053
 ```
-
-## Darknet availability (Tor, I2P and Cjdns)
-
-A demo instance of `darkseed` is reachable via TOR, I2P and Cjdns.
-
-Unfortunately I haven't found a way to integrate Onion and I2P addresses in DNS NS
-records, so nameservers have to be specified manually for now.
-
-NOTE: Due to shenanigans with DNS (DOS attacks where attackers spoof UDP source IPs in
-small DNS packets to overwhelm a target with large replies), the demo `darkseed`
-instance is rate limited to five requests per minute using `fail2ban` with a ban time of
-one hour.
-
-### Tor
-
-Instances are reachable under the following addresses:
-- `qhhxx7a2fcbzk2p2bj257c7uhrjorzhnyefuo34epmm3vlooqwemfmad.onion`
-- `d4natwynl7lqkkklzsiw4is2esztijy54v77vjfqqrmwkucm3ygjlcyd.onion`
-
-Since Tor does not support UDP, the DNS query must be sent via TCP. This is done using
-the Tor Socks5 proxy, which is reachable via `localhost:9050` by default. Note that
-depending on distribution, the proxy might or might not be enabled by default when using
-Tor (for NixOS, simply set `darkseed.client.enable` = true).
-
-Example:
-
-```bash
-darkdig dnsseed.21.ninja. --type ANY --nameserver qhhxx7a2fcbzk2p2bj257c7uhrjorzhnyefuo34epmm3vlooqwemfmad.onion --socks5-proxy 127.0.0.1:9050 --tcp
-
-; <<>> darkdig 0.11.0 <<>> @qhhxx7a2fcbzk2p2bj257c7uhrjorzhnyefuo34epmm3vlooqwemfmad.onion -p 53 --socks5-proxy 127.0.0.1:9050 --tcp dnsseed.21.ninja.
-;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 54269
-;; flags: qr rd, QUERY: 1, ANSWER: 3, AUTHORITY: 0, ADDITIONAL: 0
-
-;;QUESTION SECTION:
-; domain=dnsseed.21.ninja., rdclass=IN, rdtype=ANY
-
-;;ANSWER SECTION:
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=144.91.115.96
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=34.97.134.215
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=24.220.72.43
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=37.63.53.45
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=195.201.28.201
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=104.155.87.142
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=136.34.197.3
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=188.166.102.98
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=66.130.255.242
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=158.220.97.83
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=AAAA, data=2401:4900:1c97:b147:2460:2e:3cbb:dcde
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=AAAA, data=2600:3c01::f03c:91ff:fed8:db38
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=AAAA, data=2a01:4f9:2a:19a7::2
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=AAAA, data=2002:c338:3f0c::c338:3f0c
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=NULL
-;; ->>custom NULL encoding<<- size: 167, records: 6, data (base64): BgRlWurDygz2eTXWy2nv3jdmFhwR3dPZ7qFdiMP8RfcIDAQXj4qpTY9vFs+3uO/Euk+aLCo2FNsBzD6+nnQtXYxRawVHBEC8rkEA/H6Xbj8U1bn6V/jCvdyKswO8eB6+QwJfyAWSBVu1voQ9Bp/nZ/iGMZdKFDG/6t8sFVNCRBwnOYP6rwb8bfVihqB5HYogeqKIeSF2Bvxw3p1/4gsyWCgaPA0Pg+w
-;; ->>custom NULL-encoded address <<- record: 0, net_type: onion_v3, address: mvnovq6kbt3hsnowznu67xrxmylbyeo52pm65ik5rdb7yrpxbagcubyd.onion
-;; ->>custom NULL-encoded address <<- record: 1, net_type: onion_v3, address: c6hyvkknr5xrnt5xxdx4josptiwcunqu3ma4ypv6tz2c2xmmkfv5ghid.onion
-;; ->>custom NULL-encoded address <<- record: 2, net_type: i2p, address: i4cebpfoieapy7uxny7rjvnz7jl7rqv53sflga54papl4qycl7ea.b32.i2p
-;; ->>custom NULL-encoded address <<- record: 3, net_type: i2p, address: sicvxnn6qq6qnh7hm74immmxjikddp7k34wbku2ciqocoomd7kxq.b32.i2p
-;; ->>custom NULL-encoded address <<- record: 4, net_type: cjdns, address: fc6d:f562:86a0:791d:8a20:7aa2:8879:2176
-;; ->>custom NULL-encoded address <<- record: 5, net_type: cjdns, address: fc70:de9d:7fe2:b32:5828:1a3c:d0f:83ec
-
-;; Query time: 3441 msec
-;; SERVER: qhhxx7a2fcbzk2p2bj257c7uhrjorzhnyefuo34epmm3vlooqwemfmad.onion#53
-;; WHEN: Thu Sep 05 08:00:51 CEST 2024
-;; MSG SIZE  rcvd: 485
-```
-
-### I2P
-
-Instances are reachable under the following addresses:
-- `4ibvyflekkqc45domfbdlfp7zudurmd7x6whd4x5q7vsor7sgwtq.b32.i2p`
-- `ja7o42qnralhke5kwsatycm7hj4ssq6gqwdrcsjvgt3xe3a2tvga.b32.i2p`
-
-Since I2P does not support UDP, the DNS query must be sent via TCP. This is done using
-the Onion Socks5 proxy, which is reachable via `localhost:4447` by default. Note that
-depending on distribution, the proxy might or might not be enabled by default when using
-I2P (for NixOS, simply set `darkseed.client.enable` = true).
-
-Example:
-
-```bash
-darkdig dnsseed.21.ninja. --type ANY --nameserver 4ibvyflekkqc45domfbdlfp7zudurmd7x6whd4x5q7vsor7sgwtq.b32.i2p --socks5-proxy 127.0.0.1:4447 --tcp
-; <<>> darkdig 0.11.0 <<>> @4ibvyflekkqc45domfbdlfp7zudurmd7x6whd4x5q7vsor7sgwtq.b32.i2p -p 53 --socks5-proxy 127.0.0.1:4447 --tcp dnsseed.21.ninja.
-;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 24448
-;; flags: qr rd, QUERY: 1, ANSWER: 3, AUTHORITY: 0, ADDITIONAL: 0
-
-;;QUESTION SECTION:
-; domain=dnsseed.21.ninja., rdclass=IN, rdtype=ANY
-
-;;ANSWER SECTION:
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=8.217.206.230
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=50.102.2.188
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=34.74.24.33
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=154.26.159.203
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=34.96.182.63
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=54.146.220.99
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=13.229.129.207
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=171.97.235.226
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=87.209.21.41
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=219.79.200.233
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=AAAA, data=2a01:4f8:2190:2cc4::2
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=AAAA, data=2a01:4f9:2b:29a::2
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=AAAA, data=2604:a880:cad:d0::d8c:d001
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=AAAA, data=2a03:b0c0:1:e0::397:6001
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=NULL
-;; ->>custom NULL encoding<<- size: 167, records: 6, data (base64): BgRc/X1v3rrgYQmNl5mhyefwTsyC+C3HHBzAoUqc/ZeEJwShr1fgbGyB51MlotovQlTk/EPjI5h+Uy+crrkDS4KmaQVlM+GuwFjQAMWV4ZyIubFREzSgCKzf2XLY5dCp2psqIwUFAJnDJJU77Xg1ev7qXb+Fc5fdFSv3XQeCuP0c2xj8Pgb8lW7br2Weo80nIe/14inGBvzHvknM0dyRMSXw2kV9CM4
-;; ->>custom NULL-encoded address <<- record: 0, net_type: onion_v3, address: lt6x2366xlqgccmns6m2dsph6bhmzaxyfxdryhgauffjz7mxqqtr4tad.onion
-;; ->>custom NULL-encoded address <<- record: 1, net_type: onion_v3, address: ugxvpydmnsa6ouzfulnc6qsu4t6ehyzdtb7fgl44v24qgs4cuzuxucqd.onion
-;; ->>custom NULL-encoded address <<- record: 2, net_type: i2p, address: muz6dlwaldiabrmv4goironrkejtjiaivtp5s4wy4xiktwu3firq.b32.i2p
-;; ->>custom NULL-encoded address <<- record: 3, net_type: i2p, address: auajtqzesu5626bvpl7ouxn7qvzzpxivfp3v2b4cxd6rzwyy7q7a.b32.i2p
-;; ->>custom NULL-encoded address <<- record: 4, net_type: cjdns, address: fc95:6edb:af65:9ea3:cd27:21ef:f5e2:29c6
-;; ->>custom NULL-encoded address <<- record: 5, net_type: cjdns, address: fcc7:be49:ccd1:dc91:3125:f0da:457d:8ce
-
-;; Query time: 2570 msec
-;; SERVER: 4ibvyflekkqc45domfbdlfp7zudurmd7x6whd4x5q7vsor7sgwtq.b32.i2p#53
-;; WHEN: Thu Sep 05 08:05:04 CEST 2024
-;; MSG SIZE  rcvd: 485
-```
-
-### Cjdns
-
-Instances are reachable under the following addresses:
-- `fcf9:45bc:8c48:6973:7b3f:5538:6e51:8fc9`
-- `fc1f:3640:c8e1:af7:d177:f6c9:e443:6fdf`
-
-Cjdns works transparently and supports UDP, so no proxy and DNS over TCP is required.
-
-Example:
-
-```bash
-darkdig dnsseed.21.ninja. --type ANY --nameserver fcf9:45bc:8c48:6973:7b3f:5538:6e51:8fc9
-; <<>> darkdig 0.11.0 <<>> @fcf9:45bc:8c48:6973:7b3f:5538:6e51:8fc9 -p 53 dnsseed.21.ninja.
-;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 2091
-;; flags: qr rd, QUERY: 1, ANSWER: 3, AUTHORITY: 0, ADDITIONAL: 0
-
-;;QUESTION SECTION:
-; domain=dnsseed.21.ninja., rdclass=IN, rdtype=ANY
-
-;;ANSWER SECTION:
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=60.205.205.119
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=108.35.247.78
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=65.21.22.132
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=141.98.153.137
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=54.202.35.84
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=203.11.72.11
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=45.90.57.143
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=72.133.177.119
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=217.162.57.192
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=92.39.195.153
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=AAAA, data=2a01:4f8:c2c:a951::1
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=AAAA, data=2607:fea8:601e:7d01:be24:11ff:fe89:27f3
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=AAAA, data=2a01:4f8:1c1c:a0a6::1
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=AAAA, data=2a02:1210:4c5e:5a00:d450:529b:13b6:173
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=NULL
-;; ->>custom NULL encoding<<- size: 167, records: 6, data (base64): BgS4WazO56P8gMge/e0fsmLdWkE5BiOkHW017vD82LK3SAS2GX9uBEvUzk0K5hMQAeaqlS7Q/JaIj231jl/an78hhAXgUQRBNi8SZFeX8wuKxab5GDqUtUhjM8gIk+YRJz0vqwXFlRiHGbGF0Ol0DxHc9RaZBlzoODHP/u65XHi7yVaMmwb8lW7br2Weo80nIe/14inGBvzLAkgRphBCC8oSGPfOfT0
-;; ->>custom NULL-encoded address <<- record: 0, net_type: onion_v3, address: xbm2ztxhup6ibsa67xwr7mtc3vnecoigeosb23jv53ypzwfsw5eaprid.onion
-;; ->>custom NULL-encoded address <<- record: 1, net_type: onion_v3, address: wymx63qejpkm4tik4yjraapgvkks5uh4s2ei63pvrzp5vh57egcb2oyd.onion
-;; ->>custom NULL-encoded address <<- record: 2, net_type: i2p, address: 4biqiqjwf4jgiv4x6mfyvrng7emdvffvjbrthsaisptbcjz5f6vq.b32.i2p
-;; ->>custom NULL-encoded address <<- record: 3, net_type: i2p, address: ywkrrbyzwgc5b2lub4i5z5iwtedfz2byghh753vzlr4lxskwrsnq.b32.i2p
-;; ->>custom NULL-encoded address <<- record: 4, net_type: cjdns, address: fc95:6edb:af65:9ea3:cd27:21ef:f5e2:29c6
-;; ->>custom NULL-encoded address <<- record: 5, net_type: cjdns, address: fccb:248:11a6:1042:bca:1218:f7ce:7d3d
-
-;; Query time: 206 msec
-;; SERVER: fcf9:45bc:8c48:6973:7b3f:5538:6e51:8fc9#53
-;; WHEN: Thu Sep 05 08:06:59 CEST 2024
-;; MSG SIZE  rcvd: 485
-```
-
-## Hints
-
-To test the darknet availability of one's own `darkseed` instance, the following might
-be helpful.
-
-On NixOS, a `darkseed` instance's
-- Onion address can be found in the file `/var/lib/tor/onion/darkseed/hostname`
-- I2P address can be derived by appending `.b32.i2p` to the result of `sudo head -c 391
-  /var/lib/i2pd/darkseed-keys.dat | sha256sum | cut -f1 -d\  | xxd -r -p | base32 | tr
-  '[:upper:]' '[:lower:]' | sed -r 's/=//g'`
-- Cjdns address is associated with the `tun0` interface (`ip -6 addr show dev tun0 | awk
-  '/inet6/ && /global/ {print $2; exit}' | cut -d'/' -f1`)
