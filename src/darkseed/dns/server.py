@@ -49,11 +49,11 @@ class DNSHandler:
         match (subdomain, qtype):
             # first match takes care of ANY and no subdomain in the two following matches
             case ("", dns.rdatatype.ANY):
-                result = {NetworkType.IPV4: 10, NetworkType.IPV6: 10}
+                result = {NetworkType.IPV4: 12, NetworkType.IPV6: 10}
             case ("" | "n1", dns.rdatatype.A | dns.rdatatype.ANY):
                 result = {NetworkType.IPV4: 29}
             case ("" | "n2", dns.rdatatype.AAAA | dns.rdatatype.ANY):
-                result = {NetworkType.IPV6: 17}
+                result = {NetworkType.IPV6: 16}
             case ("n3", dns.rdatatype.AAAA | dns.rdatatype.ANY):
                 result = {NetworkType.ONION_V3: 6}
             case ("n4", dns.rdatatype.AAAA | dns.rdatatype.ANY):
