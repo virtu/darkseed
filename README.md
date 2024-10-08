@@ -85,7 +85,7 @@ You can also use regular `dig` to query the server, although this means the NULL
 won't be decoded:
 
 ```bash
-dig ANY x4.dnsseed.21.ninja
+dig ANY n4.dnsseed.21.ninja
 
 ; <<>> DiG 9.18.20 <<>> ANY dnsseed.21.ninja
 ;; global options: +cmd
