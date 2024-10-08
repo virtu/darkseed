@@ -2,6 +2,10 @@
 
 A proof-of-concept darknet Bitcoin DNS seeder.
 
+## Components
+
+### `darkseed` (server)
+
 `darkseed` can advertise Onion, I2P and CJDNS node addresses using custom-encoded DNS
 AAAA records which use a BIP155-like format (essentially BIP155 sans timestamp and
 port). Although CJDNS addresses could be represented using regular AAAA records, for the
@@ -13,9 +17,7 @@ reachability via Onion and I2P, the seeder supports DNS via TCP; Cjdns is handle
 regular DNS via UDP. Consequently, `darkseed` can help bootstrap darknet Bitcoin nodes
 by providing them with darknet peers without exiting the darknet.
 
-## Components
-
-### darkdig
+### `darkdig` (client)
 
 Tool to send DNS queries and decode `darkseed`'s custom-encoded DNS AAAA records.
 
