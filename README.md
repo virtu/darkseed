@@ -35,47 +35,46 @@ subdomains are supported:
 
 Yggdrasil (`0x07`) and deprecated TorV2 (`0x03`) are not supported.
 
-Example:
-
-TODO
+#### Example
 
 ```bash
-darkdig --type ANY dnsseed.21.ninja
-; <<>> darkdig 0.11.0 <<>> @185.12.64.1 -p 53 dnsseed.21.ninja
-;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 21953
-;; flags: qr rd ra, QUERY: 1, ANSWER: 3, AUTHORITY: 0, ADDITIONAL: 0
+darkdig --type AAAA n4.dnsseed.21.ninja
+
+; <<>> darkdig 0.13 <<>> @192.168.178.1 -p 53 -l INFO n4.dnsseed.21.ninja
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 13738
+;; flags: qr rd ra, QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 0
 
 ;;QUESTION SECTION:
-; domain=dnsseed.21.ninja., rdclass=IN, rdtype=ANY
+; domain=n4.dnsseed.21.ninja., rdclass=IN, rdtype=AAAA
 
 ;;ANSWER SECTION:
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=168.119.72.213
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=71.56.178.136
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=120.226.39.100
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=198.98.117.238
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=216.41.130.41
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=109.145.44.244
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=75.119.148.111
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=104.193.198.210
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=80.79.5.152
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=A, data=80.108.219.153
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=AAAA, data=2a13:4ac0:10:0:f816:3eff:febe:72a5
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=AAAA, data=2600:1f18:66fc:d700:9b71:f45:f3c9:c43b
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=AAAA, data=2a01:4f8:13b:3692::2
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=AAAA, data=2a01:e0a:b5:7f50:c257:a55b:4846:97e1
-domain=dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=NULL
-;; ->>custom NULL encoding<<- size: 167, records: 6, data (base64): BgQ6cwf3BI5e0OTATsTwpSjkQHibwghQieD3YQ7mG7kfugRAc5QoBdpw86fvfx/U2GrRCiL5MsguL81A/QZUumNolwVoWIU1a6BMXVSwSrWULGnlgxbUNv/nV/CX2rmx0sFgLgU3XDZWCzYqsNL6MWKFDJH+9/NDk8Txs9vnGjtAwf/UDQb8oAFReayJkrUevcRu2UG+BvyVbtuvZZ6jzSch7/XiKcY
-;; ->>custom NULL-encoded address <<- record: 0, net_type: onion_v3, address: hjzqp5yerzpnbzgaj3cpbjji4rahrg6cbbiityhxmehomg5zd65fx5id.onion
-;; ->>custom NULL-encoded address <<- record: 1, net_type: onion_v3, address: ibzzikaf3jyphj7pp4p5jwdk2efcf6jszaxc7tka7udfjotdnclukuad.onion
-;; ->>custom NULL-encoded address <<- record: 2, net_type: i2p, address: nbmiknllubgf2vfqjk2zildj4wbrnvbw77tvp4ex3k43duwbmaxa.b32.i2p
-;; ->>custom NULL-encoded address <<- record: 3, net_type: i2p, address: g5odmvqlgyvlbux2gfrikder7337gq4tyty3hw7hdi5ubqp72qgq.b32.i2p
-;; ->>custom NULL-encoded address <<- record: 4, net_type: cjdns, address: fca0:151:79ac:8992:b51e:bdc4:6ed9:41be
-;; ->>custom NULL-encoded address <<- record: 5, net_type: cjdns, address: fc95:6edb:af65:9ea3:cd27:21ef:f5e2:29c6
+domain=n4.dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=AAAA, data=fc0e:3854:4700::
+domain=n4.dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=AAAA, data=fc0c:a113:277b:8ff9:1907:8e03:b934:c4b9
+domain=n4.dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=AAAA, data=fc00:604:1070:cbfe:535b:2114:e03f:bfe0
+domain=n4.dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=AAAA, data=fc0b:bf41:594e:81af:422f:548a:ca77:4ff
+domain=n4.dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=AAAA, data=fc09:27b:4555:da65:1004:87b2:db4d:a55b
+domain=n4.dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=AAAA, data=fc08:5fcf:75f8:61e6:88f3:42e7:eb5f:4116
+domain=n4.dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=AAAA, data=fc05:4481:9e78:3fda:b3ef:ec3e:6a99:4e14
+domain=n4.dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=AAAA, data=fc03:1b2c:aad4:a5b4:95be:63c6:3dc8:eea3
+domain=n4.dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=AAAA, data=fc06:322b:33eb:305a:e1da:6cc9:6dfa:4b1d
+domain=n4.dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=AAAA, data=fc07:1d56:471:e890:3b08:b458:c0e0:d33a
+domain=n4.dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=AAAA, data=fc02:897a:964:1be6:426:1d94:5830:a481
+domain=n4.dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=AAAA, data=fc01:6dd3:3743:bcd3:b255:a44d:2f41:4088
+domain=n4.dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=AAAA, data=fc04:da30:9f01:1e18:1a9f:da06:a104:c159
+domain=n4.dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=AAAA, data=fc0a:fb6e:3c6d:8ef6:c438:a6e6:f96a:68e
+domain=n4.dnsseed.21.ninja., ttl=60, rdclass=IN, rdtype=AAAA, data=fc0d:1639:6d34:1026:ae6:73b:7dbd:80cb
+;; ->>custom AAAA encoding<<-
+;; ->>custom AAAA-encoded address <<- record: 0, net_type: onion_v3, address: cbymx7stlmqrjyb7x7qg3uzxio6nhmsvurgs6qkarcexucledptbtiad.onion
+;; ->>custom AAAA-encoded address <<- record: 1, net_type: onion_v3, address: eyoziwbqusarwlfk2ss3jfn6mpdd3shoupndbhybdymbvh62a2qzjnid.onion
+;; ->>custom AAAA-encoded address <<- record: 2, net_type: onion_v3, address: yfmujam6pa75vm7p5q7gvgkocqzcwm7lgbnodwtmzfw7usy5dvlgqyqd.onion
+;; ->>custom AAAA-encoded address <<- record: 3, net_type: onion_v3, address: ohujaoyiwrmmbygthjp465pymhtir42c47vv6qiwaj5ukvo2muikqnad.onion
+;; ->>custom AAAA-encoded address <<- record: 4, net_type: onion_v3, address: q6znwtnflp5w4pdnr33miofg434wubuox5avstubv5bc6vekzj3zssqd.onion
+;; ->>custom AAAA-encoded address <<- record: 5, net_type: onion_v3, address: 76qrgj33r74rsb4oao4tjrfzcy4w2naqeyfombz3pw6ybszykrdrfyad.onion
 
-;; Query time: 501 msec
-;; SERVER: 185.12.64.1#53
-;; WHEN: Thu Sep 05 07:54:16 CEST 2024
-;; MSG SIZE  rcvd: 485
+;; Query time: 100 msec
+;; SERVER: 192.168.178.1#53
+;; WHEN: Tue Oct 08 14:10:05 CEST 2024
+;; MSG SIZE  rcvd: 457
 ```
 
 NOTE: The repository contains a Nix flake so to test without installing use `nix
@@ -85,40 +84,40 @@ You can also use regular `dig` to query the server, although this means the NULL
 won't be decoded:
 
 ```bash
-dig ANY n4.dnsseed.21.ninja
+dig AAAA n4.dnsseed.21.ninja
 
-; <<>> DiG 9.18.20 <<>> ANY dnsseed.21.ninja
+; <<>> DiG 9.10.6 <<>> AAAA n4.dnsseed.21.ninja
 ;; global options: +cmd
 ;; Got answer:
-;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 15743
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 57127
 ;; flags: qr rd ra; QUERY: 1, ANSWER: 15, AUTHORITY: 0, ADDITIONAL: 1
 
 ;; OPT PSEUDOSECTION:
-; EDNS: version: 0, flags:; udp: 1232
+; EDNS: version: 0, flags:; udp: 512
 ;; QUESTION SECTION:
-;dnsseed.21.ninja.    IN  ANY
+;n4.dnsseed.21.ninja.           IN      AAAA
 
 ;; ANSWER SECTION:
-dnsseed.21.ninja. 60  IN  A 216.121.186.10
-dnsseed.21.ninja. 60  IN  A 185.205.124.79
-dnsseed.21.ninja. 60  IN  A 79.239.226.41
-dnsseed.21.ninja. 60  IN  A 88.71.79.122
-dnsseed.21.ninja. 60  IN  A 65.108.72.50
-dnsseed.21.ninja. 60  IN  A 90.76.125.121
-dnsseed.21.ninja. 60  IN  A 136.32.241.190
-dnsseed.21.ninja. 60  IN  A 93.123.180.164
-dnsseed.21.ninja. 60  IN  A 199.85.210.133
-dnsseed.21.ninja. 60  IN  A 144.2.121.100
-dnsseed.21.ninja. 60  IN  AAAA  2001:f40:94e:7ff:7270:fcff:fe05:3cd
-dnsseed.21.ninja. 60  IN  AAAA  2a03:4000:6:162d::1
-dnsseed.21.ninja. 60  IN  AAAA  2a01:4f8:202:3e6::2
-dnsseed.21.ninja. 60  IN  AAAA  2a10:3781:3a73:25:a177:ad25:b14a:176a
-dnsseed.21.ninja. 60  IN  NULL  \# 167 060432D092A38189F7986AF56E71D3020A415C225118CE098209C91A E04FF5B6712604FC9BEFA1C1B056A62F841E568A43220DBAF0263EFB 497C7826FCFC83C8F9D43105B61A77223CDE421DD1CF5B3687615AE6 D157F3B6FEC4F834CB333A705BE767260592DACA4C9D778FADAC6866 F968BB993F200D3C476C94C1BC8AD3722FD3AECFD306FC322C16D0D0 F1FB3B27C1878CB5920106FCC7BE49CCD1DC913125F0DA457D08CE
+n4.dnsseed.21.ninja.    60      IN      AAAA    fc04:472e:e536:8b03:437b:f23c:2804:ee50
+n4.dnsseed.21.ninja.    60      IN      AAAA    fc0b:ae5f:8747:4486:1c84:c924:b438:4e7
+n4.dnsseed.21.ninja.    60      IN      AAAA    fc08:b50:7b9f:47b6:20fb:8fe2:e4ed:e733
+n4.dnsseed.21.ninja.    60      IN      AAAA    fc0d:5496:409a:68ee:5623:5ca8:7559:c69
+n4.dnsseed.21.ninja.    60      IN      AAAA    fc07:e17a:4ff:d8bb:3343:7889:d51:d64b
+n4.dnsseed.21.ninja.    60      IN      AAAA    fc0a:7d1:2576:88ca:4b1b:b8c6:1226:8194
+n4.dnsseed.21.ninja.    60      IN      AAAA    fc09:1bde:a8b1:7be1:d604:b177:3070:6d1
+n4.dnsseed.21.ninja.    60      IN      AAAA    fc06:e6af:d1b5:37ed:a7fb:20ad:dce6:21a4
+n4.dnsseed.21.ninja.    60      IN      AAAA    fc05:471b:b962:4636:c9ee:76b3:d5b9:7f9
+n4.dnsseed.21.ninja.    60      IN      AAAA    fc0c:1895:3126:8e3c:bc46:f8a9:e18:e5fb
+n4.dnsseed.21.ninja.    60      IN      AAAA    fc01:5881:ff18:a1fe:f697:1800:517e:f4a6
+n4.dnsseed.21.ninja.    60      IN      AAAA    fc03:bc43:9214:5870:3b37:f045:3f8e:2df7
+n4.dnsseed.21.ninja.    60      IN      AAAA    fc00:604:4b0a:6f82:d4a5:b37f:4a49:6969
+n4.dnsseed.21.ninja.    60      IN      AAAA    fc02:d61b:35e7:ac78:422:5973:5cf9:bf4a
+n4.dnsseed.21.ninja.    60      IN      AAAA    fc0e:f3b8:5200::
 
-;; Query time: 28 msec
-;; SERVER: 185.12.64.1#53(185.12.64.1) (TCP)
-;; WHEN: Thu Sep 05 07:56:31 CEST 2024
-;; MSG SIZE  rcvd: 496
+;; Query time: 65 msec
+;; SERVER: 192.168.178.1#53(192.168.178.1)
+;; WHEN: Tue Oct 08 15:05:35 CEST 2024
+;; MSG SIZE  rcvd: 468
 ```
 
 ## Local Testing (with Nix)
