@@ -72,8 +72,8 @@ in
             backend = "systemd";
             journalmatch = "_SYSTEMD_UNIT=darkseed.service + _COMM=darkseed";
             filter = "darkseed";
-            # rate limit to five requests per minute; ban for one hour, both udp and tcp
-            maxretry = 5;
+            # rate limit to ten requests per minute; ban for one hour, both udp and tcp
+            maxretry = 10;
             findtime = 60;
             bantime = 3600;
             protocol = "tcp,udp";
