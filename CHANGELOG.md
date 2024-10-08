@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   with ff00::/8 prefix. Address possible reordering of records by recursive resolvers by
   storing ordering information in addition to the actual payload in the AAAA record's
   IPv6 address
+- Increase rate limiting from 5req/min to 10req/min
 
 ## [0.12.0] - 2024-09-12
 
