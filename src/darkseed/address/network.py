@@ -21,9 +21,16 @@ class NetworkType(Enum):
 
     IPV4 = auto()
     IPV6 = auto()
+    ONION_V2 = auto()
     ONION_V3 = auto()
     I2P = auto()
     CJDNS = auto()
+    YGGDRASIL = auto()
+
+    @property
+    def domain(self):
+        """Convert instance to domain prefix used by nameserver."""
+        return f"n{self.value}"
 
     def __str__(self) -> str:
         """Return a lower-case string representation of the enum member."""

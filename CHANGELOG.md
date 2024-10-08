@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.13.0] - 2024-09-23
+
+- Support encoding of darknet addresses in AAAA records encoding reserved IPv6 addresses
+  with ff00::/8 prefix. Address possible reordering of records by recursive resolvers by
+  storing ordering information in addition to the actual payload in the AAAA record's
+  IPv6 address
+- Increase rate limiting from 5req/min to 10req/min
+
 ## [0.12.0] - 2024-09-12
 
 - Silently ignore requests for unconfigured domains

@@ -16,7 +16,7 @@ import dns.rrset
 from darkseed.address import Address, NetworkType
 from darkseed.node_manager import NodeManager
 
-from .null_record import NullRecord
+from .aaaa_codec import AAAACodec
 from .regular_records import RegularRecords
 
 
@@ -37,24 +37,35 @@ class DNSHandler:
 
     _NODE_MANAGER: ClassVar[NodeManager]
     _ZONE: ClassVar[str]
-    RDTYPE_TO_NETCOUNT: ClassVar[
-        dict[dns.rdatatype.RdataType, dict[NetworkType, int]]
-    ] = {
-        dns.rdatatype.A: {NetworkType.IPV4: 29},
-        dns.rdatatype.AAAA: {NetworkType.IPV6: 17},
-        dns.rdatatype.NULL: {
-            NetworkType.ONION_V3: 5,
-            NetworkType.I2P: 5,
-            NetworkType.CJDNS: 4,
-        },
-        dns.rdatatype.ANY: {
-            NetworkType.IPV4: 10,
-            NetworkType.IPV6: 4,
-            NetworkType.ONION_V3: 2,
-            NetworkType.I2P: 2,
-            NetworkType.CJDNS: 2,
-        },
-    }
+
+    @staticmethod
+    def question_to_netcounts(question: dns.rrset.RRset) -> dict[NetworkType, int]:
+        """Map question (in particular, domain and type) to network counts."""
+        qtype = question.rdtype
+        qdomain = question.name.to_text(omit_final_dot=False).lower()
+        zone = DNSHandler._ZONE
+        assert qdomain.endswith(zone), f"Error: {qdomain} does not end with {zone}"
+        subdomain = qdomain[: -len(zone) - 1]  # remove trailing dot
+        # if len(SupportsRSub
+        #     len(subdomain) == 2 and subdomain[0] == "n":
+        #     prefix = int(subdomain[1])
+        match (subdomain, qtype):
+            # first match takes care of ANY and no subdomain in the two following matches
+            case ("", dns.rdatatype.ANY):
+                result = {NetworkType.IPV4: 12, NetworkType.IPV6: 10}
+            case ("" | NetworkType.IPV4.domain, dns.rdatatype.A | dns.rdatatype.ANY):
+                result = {NetworkType.IPV4: 29}
+            case ("" | NetworkType.IPV6.domain, dns.rdatatype.AAAA | dns.rdatatype.ANY):
+                result = {NetworkType.IPV6: 16}
+            case (NetworkType.ONION_V3.domain, dns.rdatatype.AAAA | dns.rdatatype.ANY):
+                result = {NetworkType.ONION_V3: 6}
+            case (NetworkType.I2P.domain, dns.rdatatype.AAAA | dns.rdatatype.ANY):
+                result = {NetworkType.I2P: 6}
+            case (NetworkType.CJDNS.domain, dns.rdatatype.AAAA | dns.rdatatype.ANY):
+                result = {NetworkType.CJDNS: 13}
+            case _:
+                result = {}
+        return result
 
     @classmethod
     def set_node_manager(cls, node_manager):
@@ -93,7 +104,7 @@ class DNSHandler:
 
         question = request.question[0]
         qdomain = question.name.to_text(omit_final_dot=False).lower()
-        if qdomain != cls._ZONE:
+        if not qdomain.endswith(cls._ZONE):
             log.warning(
                 "Silently dropping DNS query for unknown zone: from=%s, size=%d, name=%s",
                 peer_info,
@@ -102,9 +113,13 @@ class DNSHandler:
             )
             return bytes()
 
-        if question.rdtype not in DNSHandler.RDTYPE_TO_NETCOUNT:
+        if question.rdtype not in (
+            dns.rdatatype.A,
+            dns.rdatatype.AAAA,
+            dns.rdatatype.ANY,
+        ):
             log.warning(
-                "Refusing DNS query for unsupported type: from=%s, size=%d, name=%s, type=%s",
+                "Refusing DNS query for unsupported query type: from=%s, size=%d, name=%s, type=%s",
                 peer_info,
                 len(data),
                 qdomain,
@@ -130,13 +145,14 @@ class DNSHandler:
         return response_bytes
 
     @staticmethod
-    def select_addresses(rdtype: dns.rdatatype.RdataType) -> List[Address]:
+    def select_addresses(question: dns.rrset.RRset) -> List[Address]:
         """Get addresses based on RDTYPE in request.
 
         First, look up address types and corresponding numbers to select using
         RDTYPE. Then, request the data from the NodeManager.
         """
-        net_to_addr_num = DNSHandler.RDTYPE_TO_NETCOUNT[rdtype]
+
+        net_to_addr_num = DNSHandler.question_to_netcounts(question)
         addresses = []
         for net, count in net_to_addr_num.items():
             if count:
@@ -149,7 +165,7 @@ class DNSHandler:
         response = dns.message.make_response(request)
         response.use_edns(False)
         question = request.question[0]
-        addresses = DNSHandler.select_addresses(question.rdtype)
+        addresses = DNSHandler.select_addresses(question)
         DNSHandler.add_records_to_response(response, addresses)
         log.debug(
             "Created response (size=%dB, records=%d)",
@@ -178,8 +194,9 @@ class DNSHandler:
 
         darknet_addrs = [a for a in addresses if not (a.ipv4 or a.ipv6)]
         if darknet_addrs:
-            record = NullRecord.build_record(darknet_addrs, domain)
-            response.answer.append(record)
+            records = AAAACodec.encode(darknet_addrs, domain)
+            for record in records:
+                response.answer.append(record)
 
         size = len(response.to_wire())
         log.debug(

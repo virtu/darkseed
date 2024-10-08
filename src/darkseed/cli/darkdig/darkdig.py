@@ -1,7 +1,7 @@
 """CLI for darkdig."""
 
-import base64
 import importlib.metadata
+import logging as log
 import time
 
 import dns.flags
@@ -14,7 +14,7 @@ import dns.rdatatype
 import dns.resolver
 import socks
 
-from darkseed.dns import DNSConstants, NullRecordCodec
+from darkseed.dns import AAAACodec, DNSConstants
 
 from .config import Config, get_config
 
@@ -141,11 +141,23 @@ class PrettyPrinter:
         print(";;ANSWER SECTION:")
         for rrset in response.section_from_number(1):
             for rdata in rrset:
-                if rdata.rdtype != dns.rdatatype.NULL:
-                    PrettyPrinter.print_regular_answer_record(rrset, rdata)
-                else:
-                    PrettyPrinter.print_null_answer_record(rrset, rdata)
+                PrettyPrinter.print_regular_answer_record(rrset, rdata)
+            PrettyPrinter.maybe_print_aaaa_encoding(rrset)
         print("\n", end="")
+
+    @staticmethod
+    def maybe_print_aaaa_encoding(rrset):
+        """Print one regular DNS query response answer record."""
+        addresses = AAAACodec.decode(rrset)
+        if not addresses:
+            return
+
+        print(";; ->>custom AAAA encoding<<-")
+        for pos, address in enumerate(addresses):
+            print(";; ->>custom AAAA-encoded address <<-", end=" ")
+            print(f"record: {pos}", end=", ")
+            print(f"net_type: {address.net_type}", end=", ")
+            print(f"address: {address.address}")
 
     @staticmethod
     def print_regular_answer_record(rrset, rdata):
@@ -157,30 +169,6 @@ class PrettyPrinter:
             f" rdtype={dns.rdatatype.to_text(rrset.rdtype)},"
             f" data={rdata}"
         )
-
-    @staticmethod
-    def print_null_answer_record(rrset, rdata):
-        """Print one custom NULL-encoded DNS query response answer record."""
-
-        print(
-            f"domain={rrset.name},"
-            f" ttl={rrset.ttl},"
-            f" rdclass={dns.rdataclass.to_text(rrset.rdclass)},"
-            f" rdtype={dns.rdatatype.to_text(rrset.rdtype)}"
-        )
-
-        data_base64 = base64.b64encode(rdata.to_wire()).decode("ascii").rstrip("=")
-        addresses = NullRecordCodec.decode(rdata.to_wire())
-        print(";; ->>custom NULL encoding<<-", end=" ")
-        print(f"size: {len(rdata.to_wire())}", end=", ")
-        print(f"records: {len(addresses)}", end=", ")
-        print(f"data (base64): {data_base64}")
-
-        for pos, address in enumerate(addresses):
-            print(";; ->>custom NULL-encoded address <<-", end=" ")
-            print(f"record: {pos}", end=", ")
-            print(f"net_type: {address.net_type}", end=", ")
-            print(f"address: {address.address}")
 
     @staticmethod
     def print_sections(response: dns.message.Message):
@@ -201,6 +189,13 @@ class PrettyPrinter:
 def main():
     """Entry point."""
     conf = get_config()
+    log.basicConfig(
+        level=conf.log_level,
+        format="%(asctime)s | %(levelname)-8s | %(message)s",
+        datefmt="%Y-%m-%dT%H:%M:%SZ",
+    )
+    log.Formatter.converter = time.gmtime
+
     print(f"; <<>> darkdig {__version__} <<>>", end=" ")
     if not conf.nameserver:
         resolver = dns.resolver.Resolver()
@@ -213,6 +208,8 @@ def main():
         print("--tcp", end=" ")
     if conf.verbose:
         print("-v", end=" ")
+    if conf.log_level:
+        print(f"-l {conf.log_level}", end=" ")
     print(f"{conf.domain}")
 
     lookup_start = time.time()
