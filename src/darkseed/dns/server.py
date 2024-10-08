@@ -46,19 +46,22 @@ class DNSHandler:
         zone = DNSHandler._ZONE
         assert qdomain.endswith(zone), f"Error: {qdomain} does not end with {zone}"
         subdomain = qdomain[: -len(zone) - 1]  # remove trailing dot
+        # if len(SupportsRSub
+        #     len(subdomain) == 2 and subdomain[0] == "n":
+        #     prefix = int(subdomain[1])
         match (subdomain, qtype):
             # first match takes care of ANY and no subdomain in the two following matches
             case ("", dns.rdatatype.ANY):
                 result = {NetworkType.IPV4: 12, NetworkType.IPV6: 10}
-            case ("" | "n1", dns.rdatatype.A | dns.rdatatype.ANY):
+            case ("" | NetworkType.IPV4.domain, dns.rdatatype.A | dns.rdatatype.ANY):
                 result = {NetworkType.IPV4: 29}
-            case ("" | "n2", dns.rdatatype.AAAA | dns.rdatatype.ANY):
+            case ("" | NetworkType.IPV6.domain, dns.rdatatype.AAAA | dns.rdatatype.ANY):
                 result = {NetworkType.IPV6: 16}
-            case ("n3", dns.rdatatype.AAAA | dns.rdatatype.ANY):
+            case (NetworkType.ONION_V3.domain, dns.rdatatype.AAAA | dns.rdatatype.ANY):
                 result = {NetworkType.ONION_V3: 6}
-            case ("n4", dns.rdatatype.AAAA | dns.rdatatype.ANY):
+            case (NetworkType.I2P.domain, dns.rdatatype.AAAA | dns.rdatatype.ANY):
                 result = {NetworkType.I2P: 6}
-            case ("n5", dns.rdatatype.AAAA | dns.rdatatype.ANY):
+            case (NetworkType.CJDNS.domain, dns.rdatatype.AAAA | dns.rdatatype.ANY):
                 result = {NetworkType.CJDNS: 13}
             case _:
                 result = {}
