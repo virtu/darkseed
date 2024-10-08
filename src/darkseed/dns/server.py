@@ -38,23 +38,31 @@ class DNSHandler:
     _NODE_MANAGER: ClassVar[NodeManager]
     _ZONE: ClassVar[str]
 
-    QUESTION_TO_NETCOUNT: ClassVar[
-        dict[Tuple[str, dns.rdatatype.RdataType], dict[NetworkType, int]]
-    ] = {
-        ("", dns.rdatatype.ANY): {NetworkType.IPV4: 10, NetworkType.IPV6: 10},
-        ("", dns.rdatatype.A): {NetworkType.IPV4: 29},
-        ("", dns.rdatatype.AAAA): {NetworkType.IPV6: 17},
-        ("n1", dns.rdatatype.A): {NetworkType.IPV4: 29},
-        ("n1", dns.rdatatype.ANY): {NetworkType.IPV4: 29},
-        ("n2", dns.rdatatype.AAAA): {NetworkType.IPV6: 17},
-        ("n2", dns.rdatatype.ANY): {NetworkType.IPV6: 17},
-        ("n3", dns.rdatatype.AAAA): {NetworkType.ONION_V3: 6},
-        ("n3", dns.rdatatype.ANY): {NetworkType.ONION_V3: 6},
-        ("n4", dns.rdatatype.AAAA): {NetworkType.I2P: 6},
-        ("n4", dns.rdatatype.ANY): {NetworkType.I2P: 6},
-        ("n5", dns.rdatatype.AAAA): {NetworkType.CJDNS: 13},
-        ("n5", dns.rdatatype.ANY): {NetworkType.CJDNS: 13},
-    }
+    @staticmethod
+    def question_to_netcounts(question: dns.rrset.RRset) -> dict[NetworkType, int]:
+        """Map question (in particular, domain and type) to network counts."""
+        qtype = question.rdtype
+        qdomain = question.name.to_text(omit_final_dot=False).lower()
+        zone = DNSHandler._ZONE
+        assert qdomain.endswith(zone), f"Error: {qdomain} does not end with {zone}"
+        subdomain = qdomain[: -len(zone) - 1]  # remove trailing dot
+        match (subdomain, qtype):
+            # first match takes care of ANY and no subdomain in the two following matches
+            case ("", dns.rdatatype.ANY):
+                result = {NetworkType.IPV4: 10, NetworkType.IPV6: 10}
+            case ("" | "n1", dns.rdatatype.A | dns.rdatatype.ANY):
+                result = {NetworkType.IPV4: 29}
+            case ("" | "n2", dns.rdatatype.AAAA | dns.rdatatype.ANY):
+                result = {NetworkType.IPV6: 17}
+            case ("n3", dns.rdatatype.AAAA | dns.rdatatype.ANY):
+                result = {NetworkType.ONION_V3: 6}
+            case ("n4", dns.rdatatype.AAAA | dns.rdatatype.ANY):
+                result = {NetworkType.I2P: 6}
+            case ("n5", dns.rdatatype.AAAA | dns.rdatatype.ANY):
+                result = {NetworkType.CJDNS: 13}
+            case _:
+                result = {}
+        return result
 
     @classmethod
     def set_node_manager(cls, node_manager):
@@ -102,10 +110,13 @@ class DNSHandler:
             )
             return bytes()
 
-        subdomain = qdomain[: -len(DNSHandler._ZONE) - 1]  # remove dot and zone
-        if (subdomain, question.rdtype) not in DNSHandler.QUESTION_TO_NETCOUNT:
+        if question.rdtype not in (
+            dns.rdatatype.A,
+            dns.rdatatype.AAAA,
+            dns.rdatatype.ANY,
+        ):
             log.warning(
-                "Refusing DNS query for unsupported domain-type pair: from=%s, size=%d, name=%s, type=%s",
+                "Refusing DNS query for unsupported query type: from=%s, size=%d, name=%s, type=%s",
                 peer_info,
                 len(data),
                 qdomain,
@@ -138,10 +149,7 @@ class DNSHandler:
         RDTYPE. Then, request the data from the NodeManager.
         """
 
-        rdtype = question.rdtype
-        qdomain = question.name.to_text(omit_final_dot=False).lower()
-        subdomain = qdomain[: -len(DNSHandler._ZONE) - 1]  # remove trailing dot
-        net_to_addr_num = DNSHandler.QUESTION_TO_NETCOUNT[(subdomain, rdtype)]
+        net_to_addr_num = DNSHandler.question_to_netcounts(question)
         addresses = []
         for net, count in net_to_addr_num.items():
             if count:
